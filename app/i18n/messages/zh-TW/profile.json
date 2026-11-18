@@ -145,7 +145,11 @@
     "saveSuccess": "設定儲存成功",
     "saveFailed": "儲存設定失敗",
     "roleLimitsDescription": "Set email limits per role. A per-user limit takes precedence. Leave blank to unset (emperor defaults to unlimited; other roles fall back to the global limit).",
-    "roleLimitPlaceholder": "Blank = global / unlimited for emperor"
+    "roleLimitPlaceholder": "Blank = global / unlimited for emperor",
+    "saveOrphanMails": "保存無主郵件",
+    "saveOrphanMailsDescription": "開啟後，寄往不存在信箱的郵件會被保存；日後有人建立該信箱時，可在其中看到這些郵件。關閉時這類郵件直接丟棄。",
+    "keepMailsOnDelete": "刪信箱時保留郵件",
+    "keepMailsOnDeleteDescription": "開啟後，刪除信箱只刪信箱本身，其中的郵件會被保留；日後重建同地址信箱時可重新看到。關閉時郵件隨信箱一併刪除。"
   },
   "promote": {
     "title": "角色管理",

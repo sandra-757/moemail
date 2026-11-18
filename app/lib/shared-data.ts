@@ -167,10 +167,12 @@ export async function getSharedMessage(token: string): Promise<SharedMessage | n
       return null
     }
 
-    // 获取邮箱信息
-    const email = await db.query.emails.findFirst({
-      where: eq(emails.id, message.emailId)
-    })
+    // 获取邮箱信息（孤儿邮件没有归属邮箱；其分享在转孤儿时已清除，正常不会走到这里）
+    const email = message.emailId
+      ? await db.query.emails.findFirst({
+          where: eq(emails.id, message.emailId)
+        })
+      : undefined
 
     return {
       id: message.id,

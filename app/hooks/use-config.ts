@@ -22,6 +22,8 @@ interface Config {
   defaultExpiry: number
   allowPermanentEmail: boolean
   pollIntervalSeconds: number
+  saveOrphanMails: boolean
+  keepMailsOnDelete: boolean
   roleLimits: Record<"emperor" | "duke" | "knight", string>
 }
 
@@ -40,6 +42,8 @@ interface ConfigApiResponse {
   defaultExpiry?: number
   allowPermanentEmail?: boolean
   pollIntervalSeconds?: number
+  saveOrphanMails?: boolean
+  keepMailsOnDelete?: boolean
   roleLimits?: Partial<Record<"emperor" | "duke" | "knight", string>>
 }
 
@@ -87,6 +91,8 @@ const useConfigStore = create<ConfigStore>((set) => ({
           defaultExpiry,
           allowPermanentEmail: data.allowPermanentEmail ?? SITE_CONFIG_DEFAULTS.ALLOW_PERMANENT_EMAIL,
           pollIntervalSeconds,
+          saveOrphanMails: data.saveOrphanMails ?? SITE_CONFIG_DEFAULTS.SAVE_ORPHAN_MAILS,
+          keepMailsOnDelete: data.keepMailsOnDelete ?? SITE_CONFIG_DEFAULTS.KEEP_MAILS_ON_DELETE,
           roleLimits: {
             emperor: data.roleLimits?.emperor ?? "",
             duke: data.roleLimits?.duke ?? "",

@@ -8,6 +8,7 @@ import { checkBasicSendPermission } from "@/lib/send-permissions"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserRoleName } from "@/lib/email-limit"
 import { computeExpiresAt } from "@/lib/email-expiry"
+import { detachMessagesToOrphans, isKeepMailsOnDeleteEnabled } from "@/lib/orphan-mail"
 
 export const runtime = "edge"
 
@@ -33,8 +34,14 @@ export async function DELETE(
         { status: 403 }
       )
     }
-    await db.delete(messages)
-      .where(eq(messages.emailId, id))
+    // 站点开关 KEEP_MAILS_ON_DELETE 开启时：删邮箱保留邮件（转孤儿，日后同地址重建可认领）
+    const keepMails = await isKeepMailsOnDeleteEnabled(getRequestContext().env.SITE_CONFIG)
+    if (keepMails) {
+      await detachMessagesToOrphans(db, email)
+    } else {
+      await db.delete(messages)
+        .where(eq(messages.emailId, id))
+    }
 
     await db.delete(emails)
       .where(eq(emails.id, id))

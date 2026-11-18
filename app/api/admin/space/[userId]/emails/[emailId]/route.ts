@@ -7,6 +7,7 @@ import { loadOwnedEmail, isSpaceTargetForbidden, SPACE_TARGET_FORBIDDEN_ERROR } 
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { ROLES } from "@/lib/permissions"
 import { computeExpiresAt } from "@/lib/email-expiry"
+import { detachMessagesToOrphans, isKeepMailsOnDeleteEnabled } from "@/lib/orphan-mail"
 
 export const runtime = "edge"
 
@@ -32,17 +33,23 @@ export async function DELETE(
       return NextResponse.json({ error: "邮箱不存在" }, { status: 404 })
     }
 
-    const messageRows = await db
-      .select({ id: messages.id })
-      .from(messages)
-      .where(eq(messages.emailId, emailId))
-    const messageIds = messageRows.map((row) => row.id)
+    // 站点开关 KEEP_MAILS_ON_DELETE 开启时：删邮箱保留邮件（转孤儿，日后同地址重建可认领）
+    const keepMails = await isKeepMailsOnDeleteEnabled(getRequestContext().env.SITE_CONFIG)
+    if (keepMails) {
+      await detachMessagesToOrphans(db, email)
+    } else {
+      const messageRows = await db
+        .select({ id: messages.id })
+        .from(messages)
+        .where(eq(messages.emailId, emailId))
+      const messageIds = messageRows.map((row) => row.id)
 
-    if (messageIds.length > 0) {
-      await db.delete(messageShares).where(inArray(messageShares.messageId, messageIds))
-      await db.delete(messages).where(eq(messages.emailId, emailId))
+      if (messageIds.length > 0) {
+        await db.delete(messageShares).where(inArray(messageShares.messageId, messageIds))
+        await db.delete(messages).where(eq(messages.emailId, emailId))
+      }
+      await db.delete(emailShares).where(eq(emailShares.emailId, emailId))
     }
-    await db.delete(emailShares).where(eq(emailShares.emailId, emailId))
     await db.delete(emails).where(eq(emails.id, emailId))
 
     return NextResponse.json({ success: true })

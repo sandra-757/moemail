@@ -58,8 +58,8 @@ export const emails = sqliteTable("email", {
 export const messages = sqliteTable("message", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   emailId: text("emailId")
-    .notNull()
     .references(() => emails.id, { onDelete: "cascade" }),
+  ownerAddress: text("owner_address"),
   fromAddress: text("from_address"),
   toAddress: text("to_address"),
   subject: text("subject").notNull(),
@@ -75,6 +75,7 @@ export const messages = sqliteTable("message", {
 }, (table) => ({
   emailIdIdx: index("message_email_id_idx").on(table.emailId),
   emailIdReceivedAtTypeIdx: index("message_email_id_received_at_type_idx").on(table.emailId, table.receivedAt, table.type),
+  ownerAddressIdx: index("message_owner_address_idx").on(table.ownerAddress),
 }))
 
 export const webhooks = sqliteTable('webhook', {

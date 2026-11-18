@@ -77,6 +77,8 @@ export function WebsiteConfigPanel() {
   const [maxEmails, setMaxEmails] = useState<string>(EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString())
   const [defaultExpiry, setDefaultExpiry] = useState<string>(SITE_CONFIG_DEFAULTS.DEFAULT_EXPIRY_MS.toString())
   const [allowPermanentEmail, setAllowPermanentEmail] = useState(true)
+  const [saveOrphanMails, setSaveOrphanMails] = useState(false)
+  const [keepMailsOnDelete, setKeepMailsOnDelete] = useState(false)
   const [pollIntervalSeconds, setPollIntervalSeconds] = useState<string>(SITE_CONFIG_DEFAULTS.POLL_INTERVAL_SECONDS.toString())
   const [roleLimits, setRoleLimits] = useState<Record<string, string>>({
     emperor: "",
@@ -112,6 +114,8 @@ export function WebsiteConfigPanel() {
         defaultExpiry?: number,
         allowPermanentEmail?: boolean,
         pollIntervalSeconds?: number,
+        saveOrphanMails?: boolean,
+        keepMailsOnDelete?: boolean,
         roleLimits?: Record<string, string>,
         turnstile?: {
           enabled: boolean,
@@ -131,6 +135,8 @@ export function WebsiteConfigPanel() {
       setMaintenanceMessage(data.maintenanceMessage ?? "")
       setDefaultExpiry((data.defaultExpiry ?? SITE_CONFIG_DEFAULTS.DEFAULT_EXPIRY_MS).toString())
       setAllowPermanentEmail(data.allowPermanentEmail ?? true)
+      setSaveOrphanMails(data.saveOrphanMails ?? false)
+      setKeepMailsOnDelete(data.keepMailsOnDelete ?? false)
       setPollIntervalSeconds((data.pollIntervalSeconds ?? SITE_CONFIG_DEFAULTS.POLL_INTERVAL_SECONDS).toString())
       setRoleLimits({
         emperor: data.roleLimits?.emperor ?? "",
@@ -163,6 +169,8 @@ export function WebsiteConfigPanel() {
           defaultExpiry: Number(defaultExpiry),
           allowPermanentEmail,
           pollIntervalSeconds: Number(pollIntervalSeconds),
+          saveOrphanMails,
+          keepMailsOnDelete,
           roleLimits,
           turnstile: {
             enabled: turnstileEnabled,
@@ -338,6 +346,22 @@ export function WebsiteConfigPanel() {
             description={t("allowPermanentEmailDescription")}
             checked={allowPermanentEmail}
             onCheckedChange={setAllowPermanentEmail}
+          />
+
+          <SwitchRow
+            id="save-orphan-mails"
+            label={t("saveOrphanMails")}
+            description={t("saveOrphanMailsDescription")}
+            checked={saveOrphanMails}
+            onCheckedChange={setSaveOrphanMails}
+          />
+
+          <SwitchRow
+            id="keep-mails-on-delete"
+            label={t("keepMailsOnDelete")}
+            description={t("keepMailsOnDeleteDescription")}
+            checked={keepMailsOnDelete}
+            onCheckedChange={setKeepMailsOnDelete}
           />
 
           <div className="flex items-center gap-4">

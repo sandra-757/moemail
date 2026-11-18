@@ -145,7 +145,11 @@
     "saveSuccess": "配置保存成功",
     "saveFailed": "保存配置失败",
     "roleLimitsDescription": "按角色分组设置邮箱上限，优先级低于用户个人上限；留空表示该分组未单独设置（皇帝留空默认不限，其余分组跟随全局上限）。",
-    "roleLimitPlaceholder": "留空跟随全局/皇帝默认不限"
+    "roleLimitPlaceholder": "留空跟随全局/皇帝默认不限",
+    "saveOrphanMails": "保存无主邮件",
+    "saveOrphanMailsDescription": "开启后，发往不存在邮箱的邮件会被保存下来；日后有人创建该邮箱时，可在其中看到这些邮件。关闭时这类邮件直接丢弃。",
+    "keepMailsOnDelete": "删邮箱时保留邮件",
+    "keepMailsOnDeleteDescription": "开启后，删除邮箱只删邮箱本身，其中的邮件会被保留；日后重建同地址邮箱时可重新看到。关闭时邮件随邮箱一并删除。"
   },
   "promote": {
     "title": "角色管理",

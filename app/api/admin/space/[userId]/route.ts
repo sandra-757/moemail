@@ -11,6 +11,7 @@ import { isAdminAuthorized } from "@/lib/admin-access"
 import { loadSpaceUser, isSpaceTargetForbidden, SPACE_TARGET_FORBIDDEN_ERROR } from "@/lib/admin-space"
 import { resolveEmailLimit, countActiveEmails, getUserRoleName } from "@/lib/email-limit"
 import { nextSortOrder } from "@/lib/email-expiry"
+import { claimOrphanMessages, shouldClaimOrphans } from "@/lib/orphan-mail"
 
 export const runtime = "edge"
 
@@ -178,6 +179,11 @@ export async function POST(
         userId,
       })
       .returning({ id: emails.id, address: emails.address })
+
+    // 认领该地址的孤儿邮件（收信时邮箱不存在而保存的、或删邮箱时保留下来的）
+    if (await shouldClaimOrphans(env.SITE_CONFIG)) {
+      await claimOrphanMessages(db, result[0].id, address)
+    }
 
     return NextResponse.json({
       id: result[0].id,

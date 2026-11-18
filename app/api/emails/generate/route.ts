@@ -11,6 +11,7 @@ import { ROLES } from "@/lib/permissions"
 import { parseConfigBool, SITE_CONFIG_DEFAULTS } from "@/lib/site-config"
 import { resolveEmailLimit, countActiveEmails } from "@/lib/email-limit"
 import { nextSortOrder } from "@/lib/email-expiry"
+import { claimOrphanMessages, shouldClaimOrphans } from "@/lib/orphan-mail"
 
 export const runtime = "edge"
 
@@ -119,6 +120,11 @@ export async function POST(request: Request) {
     const result = await db.insert(emails)
       .values(emailData)
       .returning({ id: emails.id, address: emails.address })
+
+    // 认领该地址的孤儿邮件（收信时邮箱不存在而保存的、或删邮箱时保留下来的）
+    if (await shouldClaimOrphans(env.SITE_CONFIG)) {
+      await claimOrphanMessages(db, result[0].id, address)
+    }
     
     return NextResponse.json({ 
       id: result[0].id,

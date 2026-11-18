@@ -19,7 +19,26 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
     })
 
     if (!targetEmail) {
-      console.error(`Email not found: ${message.to}`)
+      // 目标邮箱不存在：站点开关 SAVE_ORPHAN_MAILS 开启时存为孤儿邮件，
+      // 日后同地址邮箱被创建时可被认领查看；否则维持原行为直接丢弃。
+      const saveOrphan = env.SITE_CONFIG
+        ? (await env.SITE_CONFIG.get("SAVE_ORPHAN_MAILS")) === "true"
+        : false
+      if (saveOrphan) {
+        await db.insert(messages).values({
+          emailId: null,
+          ownerAddress: message.to,
+          fromAddress: message.from,
+          toAddress: message.to,
+          subject: parsedMessage.subject || '(无主题)',
+          content: parsedMessage.text || '',
+          html: parsedMessage.html || '',
+          type: 'received',
+        })
+        console.log(`Orphan email saved for nonexistent address: ${message.to}`)
+      } else {
+        console.error(`Email not found: ${message.to}`)
+      }
       return
     }
 

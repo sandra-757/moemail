@@ -145,7 +145,11 @@
     "saveSuccess": "설정이 성공적으로 저장되었습니다",
     "saveFailed": "설정 저장에 실패했습니다",
     "roleLimitsDescription": "Set email limits per role. A per-user limit takes precedence. Leave blank to unset (emperor defaults to unlimited; other roles fall back to the global limit).",
-    "roleLimitPlaceholder": "Blank = global / unlimited for emperor"
+    "roleLimitPlaceholder": "Blank = global / unlimited for emperor",
+    "saveOrphanMails": "Save mail to nonexistent mailboxes",
+    "saveOrphanMailsDescription": "When on, mail sent to a mailbox that does not exist is saved; if that mailbox is created later, the saved mail appears in it. When off, such mail is discarded.",
+    "keepMailsOnDelete": "Keep mail when a mailbox is deleted",
+    "keepMailsOnDeleteDescription": "When on, deleting a mailbox keeps its mail; recreating the same address later restores it. When off, mail is deleted together with the mailbox."
   },
   "promote": {
     "title": "역할 관리",

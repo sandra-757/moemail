@@ -48,6 +48,8 @@ export async function GET() {
     defaultExpiryMs,
     allowPermanentEmail,
     pollIntervalSeconds,
+    saveOrphanMails,
+    keepMailsOnDelete,
     roleLimitValues
   ] = await Promise.all([
     env.SITE_CONFIG.get("DEFAULT_ROLE"),
@@ -66,6 +68,8 @@ export async function GET() {
     env.SITE_CONFIG.get("DEFAULT_EXPIRY_MS"),
     env.SITE_CONFIG.get("ALLOW_PERMANENT_EMAIL"),
     env.SITE_CONFIG.get("POLL_INTERVAL_SECONDS"),
+    env.SITE_CONFIG.get("SAVE_ORPHAN_MAILS"),
+    env.SITE_CONFIG.get("KEEP_MAILS_ON_DELETE"),
     Promise.all(ROLE_LIMIT_FIELDS.map(([, key]) => env.SITE_CONFIG.get(key)))
   ])
 
@@ -83,6 +87,8 @@ export async function GET() {
     defaultExpiry: parseDefaultExpiry(defaultExpiryMs),
     allowPermanentEmail: parseConfigBool(allowPermanentEmail, SITE_CONFIG_DEFAULTS.ALLOW_PERMANENT_EMAIL),
     pollIntervalSeconds: parsePollIntervalSeconds(pollIntervalSeconds),
+    saveOrphanMails: parseConfigBool(saveOrphanMails, SITE_CONFIG_DEFAULTS.SAVE_ORPHAN_MAILS),
+    keepMailsOnDelete: parseConfigBool(keepMailsOnDelete, SITE_CONFIG_DEFAULTS.KEEP_MAILS_ON_DELETE),
     roleLimits: Object.fromEntries(
       ROLE_LIMIT_FIELDS.map(([field], index) => [field, roleLimitValues[index] || ""])
     ) as Record<RoleLimitField, string>,
@@ -108,6 +114,8 @@ interface ConfigPostBody {
   defaultExpiry?: number
   allowPermanentEmail?: boolean
   pollIntervalSeconds?: number
+  saveOrphanMails?: boolean
+  keepMailsOnDelete?: boolean
   roleLimits?: Partial<Record<RoleLimitField, string>>
   turnstile?: {
     enabled: boolean
@@ -164,6 +172,8 @@ export async function POST(request: Request) {
     ["allowRegistration", "ALLOW_REGISTRATION"],
     ["maintenanceMode", "MAINTENANCE_MODE"],
     ["allowPermanentEmail", "ALLOW_PERMANENT_EMAIL"],
+    ["saveOrphanMails", "SAVE_ORPHAN_MAILS"],
+    ["keepMailsOnDelete", "KEEP_MAILS_ON_DELETE"],
   ]
   for (const [field] of boolFields) {
     if (body[field] !== undefined && typeof body[field] !== "boolean") {
