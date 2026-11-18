@@ -1,5 +1,16 @@
 import Cloudflare from "cloudflare";
 import "dotenv/config";
+// When an egress proxy is configured in the environment, the Cloudflare
+// SDK must be given an explicit proxy agent: it builds its own plain
+// https agent by default and ignores https.globalAgent.
+import HttpsProxyAgentPkg from "https-proxy-agent";
+const HttpsProxyAgent =
+  (HttpsProxyAgentPkg as unknown as { HttpsProxyAgent?: unknown }).HttpsProxyAgent ??
+  HttpsProxyAgentPkg;
+
+const proxyUrl =
+  process.env.https_proxy || process.env.HTTPS_PROXY ||
+  process.env.http_proxy || process.env.HTTP_PROXY;
 
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID!;
 const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
@@ -11,7 +22,8 @@ const DATABASE_ID = process.env.DATABASE_ID;
 
 const client = new Cloudflare({
   apiKey: CF_API_TOKEN,
-});
+  ...(proxyUrl ? { httpAgent: new (HttpsProxyAgent as new (u: string) => never)(proxyUrl) } : {}),
+} as ConstructorParameters<typeof Cloudflare>[0]);
 
 export const getPages = async () => {
   const projectInfo = await client.pages.projects.get(PROJECT_NAME, {
