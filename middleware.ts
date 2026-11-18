@@ -21,7 +21,10 @@ export async function middleware(request: Request) {
   if (pathname.startsWith('/api')) {
     if (
       pathname.startsWith('/api/auth') ||
-      pathname.startsWith('/api/shared')
+      pathname.startsWith('/api/shared') ||
+      // 管理员邮箱空间：由路由自身的 isAdminAuthorized 鉴权（皇帝会话或特殊密钥），
+      // 不能被这里的会话门拦住，否则密钥通道永远走不通
+      pathname.startsWith('/api/admin/space')
     ) {
       return NextResponse.next()
     }
