@@ -31,6 +31,10 @@ interface TurnstileConfigProps {
 
 interface LoginFormProps {
   turnstile?: TurnstileConfigProps
+  oauth?: {
+    github: boolean
+    google: boolean
+  }
 }
 
 interface FormErrors {
@@ -39,7 +43,10 @@ interface FormErrors {
   confirmPassword?: string
 }
 
-export function LoginForm({ turnstile }: LoginFormProps) {
+export function LoginForm({ turnstile, oauth }: LoginFormProps) {
+  const oauthGithubEnabled = Boolean(oauth?.github)
+  const oauthGoogleEnabled = Boolean(oauth?.google)
+  const anyOAuthEnabled = oauthGithubEnabled || oauthGoogleEnabled
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -288,6 +295,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
                   {t("actions.login")}
                 </Button>
 
+                {anyOAuthEnabled && (
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
@@ -298,7 +306,9 @@ export function LoginForm({ turnstile }: LoginFormProps) {
                     </span>
                   </div>
                 </div>
+                )}
 
+                {oauthGithubEnabled && (
                 <Button
                   variant="outline"
                   className="w-full"
@@ -307,7 +317,9 @@ export function LoginForm({ turnstile }: LoginFormProps) {
                   <Github className="mr-2 h-4 w-4" />
                   {t("actions.githubLogin")}
                 </Button>
+                )}
 
+                {oauthGoogleEnabled && (
                 <Button
                   variant="outline"
                   className="w-full"
@@ -333,6 +345,7 @@ export function LoginForm({ turnstile }: LoginFormProps) {
                   </svg>
                   {t("actions.googleLogin")}
                 </Button>
+                )}
               </div>
             </TabsContent>
             <TabsContent value="register" className="space-y-4 mt-0">
