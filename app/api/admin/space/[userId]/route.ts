@@ -40,11 +40,19 @@ export async function GET(
         address: emails.address,
         createdAt: emails.createdAt,
         expiresAt: emails.expiresAt,
-        messageCount: sql<number>`(SELECT count(*) FROM ${messages} WHERE ${messages.emailId} = ${emails.id})`,
       })
       .from(emails)
       .where(eq(emails.userId, userId))
       .orderBy(sql`${emails.createdAt} DESC`)
+
+    // 消息数单独分组统计（相关子查询在 D1 上结果不可靠）
+    const countRows = await db
+      .select({ emailId: messages.emailId, count: sql<number>`count(*)` })
+      .from(messages)
+      .innerJoin(emails, eq(messages.emailId, emails.id))
+      .where(eq(emails.userId, userId))
+      .groupBy(messages.emailId)
+    const countByEmailId = new Map(countRows.map((r) => [r.emailId, Number(r.count)]))
 
     return NextResponse.json({
       user: {
@@ -61,7 +69,7 @@ export async function GET(
         address: row.address,
         createdAt: row.createdAt,
         expiresAt: row.expiresAt,
-        messageCount: Number(row.messageCount),
+        messageCount: countByEmailId.get(row.id) ?? 0,
       })),
     })
   } catch (error) {
