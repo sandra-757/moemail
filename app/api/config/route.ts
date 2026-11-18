@@ -15,6 +15,16 @@ import {
   parseSiteName,
   normalizeEmailDomains,
 } from "@/lib/site-config"
+import { ROLE_LIMIT_KV_KEYS, ROLE_LIMIT_MIN, ROLE_LIMIT_MAX, isValidRoleLimitInput } from "@/lib/email-limit"
+
+const ROLE_LIMIT_FIELDS = [
+  ["emperor", ROLE_LIMIT_KV_KEYS[ROLES.EMPEROR]],
+  ["duke", ROLE_LIMIT_KV_KEYS[ROLES.DUKE]],
+  ["knight", ROLE_LIMIT_KV_KEYS[ROLES.KNIGHT]],
+  ["civilian", ROLE_LIMIT_KV_KEYS[ROLES.CIVILIAN]],
+] as const
+
+type RoleLimitField = (typeof ROLE_LIMIT_FIELDS)[number][0]
 
 export const runtime = "edge"
 
@@ -38,7 +48,8 @@ export async function GET() {
     maintenanceMessage,
     defaultExpiryMs,
     allowPermanentEmail,
-    pollIntervalSeconds
+    pollIntervalSeconds,
+    roleLimitValues
   ] = await Promise.all([
     env.SITE_CONFIG.get("DEFAULT_ROLE"),
     env.SITE_CONFIG.get("EMAIL_DOMAINS"),
@@ -55,7 +66,8 @@ export async function GET() {
     env.SITE_CONFIG.get("MAINTENANCE_MESSAGE"),
     env.SITE_CONFIG.get("DEFAULT_EXPIRY_MS"),
     env.SITE_CONFIG.get("ALLOW_PERMANENT_EMAIL"),
-    env.SITE_CONFIG.get("POLL_INTERVAL_SECONDS")
+    env.SITE_CONFIG.get("POLL_INTERVAL_SECONDS"),
+    Promise.all(ROLE_LIMIT_FIELDS.map(([, key]) => env.SITE_CONFIG.get(key)))
   ])
 
   return Response.json({
@@ -72,6 +84,9 @@ export async function GET() {
     defaultExpiry: parseDefaultExpiry(defaultExpiryMs),
     allowPermanentEmail: parseConfigBool(allowPermanentEmail, SITE_CONFIG_DEFAULTS.ALLOW_PERMANENT_EMAIL),
     pollIntervalSeconds: parsePollIntervalSeconds(pollIntervalSeconds),
+    roleLimits: Object.fromEntries(
+      ROLE_LIMIT_FIELDS.map(([field], index) => [field, roleLimitValues[index] || ""])
+    ) as Record<RoleLimitField, string>,
     turnstile: canManageConfig ? {
       enabled: turnstileEnabled === "true",
       siteKey: turnstileSiteKey || "",
@@ -94,6 +109,7 @@ interface ConfigPostBody {
   defaultExpiry?: number
   allowPermanentEmail?: boolean
   pollIntervalSeconds?: number
+  roleLimits?: Partial<Record<RoleLimitField, string>>
   turnstile?: {
     enabled: boolean
     siteKey: string
@@ -182,6 +198,20 @@ export async function POST(request: Request) {
     }
   }
 
+  // 分组邮箱上限：每个字段缺失时不动；空字符串 = 清除（跟随下一级规则）；
+  // 其余必须是 1–100000 的整数字符串
+  if (body.roleLimits !== undefined) {
+    if (typeof body.roleLimits !== "object" || body.roleLimits === null) {
+      return Response.json({ error: "分组邮箱上限格式无效" }, { status: 400 })
+    }
+    for (const [field] of ROLE_LIMIT_FIELDS) {
+      const value = body.roleLimits[field]
+      if (value !== undefined && !isValidRoleLimitInput(value)) {
+        return Response.json({ error: `分组邮箱上限必须是 ${ROLE_LIMIT_MIN}–${ROLE_LIMIT_MAX} 的整数或留空` }, { status: 400 })
+      }
+    }
+  }
+
   const turnstileConfig = turnstile ?? {
     enabled: false,
     siteKey: "",
@@ -221,6 +251,18 @@ export async function POST(request: Request) {
   }
   if (body.pollIntervalSeconds !== undefined) {
     puts.push(env.SITE_CONFIG.put("POLL_INTERVAL_SECONDS", body.pollIntervalSeconds.toString()))
+  }
+  if (body.roleLimits !== undefined) {
+    for (const [field, key] of ROLE_LIMIT_FIELDS) {
+      const value = body.roleLimits[field]
+      if (value === undefined) continue
+      const trimmed = value.trim()
+      puts.push(
+        trimmed === ""
+          ? env.SITE_CONFIG.delete(key)
+          : env.SITE_CONFIG.put(key, Number(trimmed).toString())
+      )
+    }
   }
 
   await Promise.all(puts)

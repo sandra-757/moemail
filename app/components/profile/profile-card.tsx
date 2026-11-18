@@ -14,6 +14,7 @@ import { useRolePermission } from "@/hooks/use-role-permission"
 import { PERMISSIONS } from "@/lib/permissions"
 import { WebsiteConfigPanel } from "./website-config-panel"
 import { ApiKeyPanel } from "./api-key-panel"
+import { UserManagementPanel } from "./user-management-panel"
 
 interface ProfileCardProps {
   user: User
@@ -148,6 +149,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
       {canManageConfig && <WebsiteConfigPanel />}
       {canManageConfig && <EmailServiceConfig />}
       {canPromote && <PromotePanel />}
+      {canPromote && <UserManagementPanel />}
       {canManageWebhook && <ApiKeyPanel />}
 
       <div className="flex flex-col sm:flex-row gap-4 px-1">

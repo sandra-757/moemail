@@ -78,6 +78,12 @@ export function WebsiteConfigPanel() {
   const [defaultExpiry, setDefaultExpiry] = useState<string>(SITE_CONFIG_DEFAULTS.DEFAULT_EXPIRY_MS.toString())
   const [allowPermanentEmail, setAllowPermanentEmail] = useState(true)
   const [pollIntervalSeconds, setPollIntervalSeconds] = useState<string>(SITE_CONFIG_DEFAULTS.POLL_INTERVAL_SECONDS.toString())
+  const [roleLimits, setRoleLimits] = useState<Record<string, string>>({
+    emperor: "",
+    duke: "",
+    knight: "",
+    civilian: "",
+  })
   // 人机验证
   const [turnstileEnabled, setTurnstileEnabled] = useState(false)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState("")
@@ -107,6 +113,7 @@ export function WebsiteConfigPanel() {
         defaultExpiry?: number,
         allowPermanentEmail?: boolean,
         pollIntervalSeconds?: number,
+        roleLimits?: Record<string, string>,
         turnstile?: {
           enabled: boolean,
           siteKey: string,
@@ -126,6 +133,12 @@ export function WebsiteConfigPanel() {
       setDefaultExpiry((data.defaultExpiry ?? SITE_CONFIG_DEFAULTS.DEFAULT_EXPIRY_MS).toString())
       setAllowPermanentEmail(data.allowPermanentEmail ?? true)
       setPollIntervalSeconds((data.pollIntervalSeconds ?? SITE_CONFIG_DEFAULTS.POLL_INTERVAL_SECONDS).toString())
+      setRoleLimits({
+        emperor: data.roleLimits?.emperor ?? "",
+        duke: data.roleLimits?.duke ?? "",
+        knight: data.roleLimits?.knight ?? "",
+        civilian: data.roleLimits?.civilian ?? "",
+      })
       setTurnstileEnabled(Boolean(data.turnstile?.enabled))
       setTurnstileSiteKey(data.turnstile?.siteKey ?? "")
       setTurnstileSecretKey(data.turnstile?.secretKey ?? "")
@@ -152,6 +165,7 @@ export function WebsiteConfigPanel() {
           defaultExpiry: Number(defaultExpiry),
           allowPermanentEmail,
           pollIntervalSeconds: Number(pollIntervalSeconds),
+          roleLimits,
           turnstile: {
             enabled: turnstileEnabled,
             siteKey: turnstileSiteKey,
@@ -344,6 +358,36 @@ export function WebsiteConfigPanel() {
               </p>
             </div>
           </div>
+        </ConfigSection>
+
+        <ConfigSection title={t("sections.roleLimits")}>
+          <p className="text-xs text-muted-foreground">
+            {t("roleLimitsDescription")}
+          </p>
+          {(
+            [
+              ["emperor", tCard("roles.EMPEROR")],
+              ["duke", tCard("roles.DUKE")],
+              ["knight", tCard("roles.KNIGHT")],
+              ["civilian", tCard("roles.CIVILIAN")],
+            ] as const
+          ).map(([field, label]) => (
+            <div key={field} className="flex items-center gap-4">
+              <span className="text-sm shrink-0">{label}:</span>
+              <div className="flex-1">
+                <Input
+                  type="number"
+                  min="1"
+                  max="100000"
+                  value={roleLimits[field]}
+                  onChange={(e) =>
+                    setRoleLimits((prev) => ({ ...prev, [field]: e.target.value }))
+                  }
+                  placeholder={t("roleLimitPlaceholder")}
+                />
+              </div>
+            </div>
+          ))}
         </ConfigSection>
 
         <ConfigSection title={t("sections.turnstile")}>

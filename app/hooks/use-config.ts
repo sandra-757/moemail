@@ -22,6 +22,7 @@ interface Config {
   defaultExpiry: number
   allowPermanentEmail: boolean
   pollIntervalSeconds: number
+  roleLimits: Record<"emperor" | "duke" | "knight" | "civilian", string>
 }
 
 /** /api/config GET 的原始返回（字段可能缺失，逐项兜底） */
@@ -39,6 +40,7 @@ interface ConfigApiResponse {
   defaultExpiry?: number
   allowPermanentEmail?: boolean
   pollIntervalSeconds?: number
+  roleLimits?: Partial<Record<"emperor" | "duke" | "knight" | "civilian", string>>
 }
 
 interface ConfigStore {
@@ -84,7 +86,13 @@ const useConfigStore = create<ConfigStore>((set) => ({
           maintenanceMessage: data.maintenanceMessage || "",
           defaultExpiry,
           allowPermanentEmail: data.allowPermanentEmail ?? SITE_CONFIG_DEFAULTS.ALLOW_PERMANENT_EMAIL,
-          pollIntervalSeconds
+          pollIntervalSeconds,
+          roleLimits: {
+            emperor: data.roleLimits?.emperor ?? "",
+            duke: data.roleLimits?.duke ?? "",
+            knight: data.roleLimits?.knight ?? "",
+            civilian: data.roleLimits?.civilian ?? "",
+          }
         },
         loading: false
       })

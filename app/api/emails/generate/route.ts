@@ -2,14 +2,14 @@ import { NextResponse } from "next/server"
 import { nanoid } from "nanoid"
 import { createDb } from "@/lib/db"
 import { emails } from "@/lib/schema"
-import { eq, and, gt, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { EXPIRY_OPTIONS } from "@/types/email"
-import { EMAIL_CONFIG } from "@/config"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
 import { ROLES } from "@/lib/permissions"
 import { parseConfigBool, SITE_CONFIG_DEFAULTS } from "@/lib/site-config"
+import { resolveEmailLimit, countActiveEmails } from "@/lib/email-limit"
 
 export const runtime = "edge"
 
@@ -33,21 +33,16 @@ export async function POST(request: Request) {
           { status: 503 }
         )
       }
+    }
 
-      const maxEmails = await env.SITE_CONFIG.get("MAX_EMAILS") || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString()
-      const activeEmailsCount = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(emails)
-        .where(
-          and(
-            eq(emails.userId, userId!),
-            gt(emails.expiresAt, new Date())
-          )
-        )
-      
-      if (Number(activeEmailsCount[0].count) >= Number(maxEmails)) {
+    // 邮箱上限统一解析：个人上限 → 分组上限 → 皇帝不限 → 全局上限
+    // （皇帝在设了个人/分组上限时同样受限）
+    const emailLimit = await resolveEmailLimit(db, env.SITE_CONFIG, userId!)
+    if (Number.isFinite(emailLimit)) {
+      const activeEmailsCount = await countActiveEmails(db, userId!)
+      if (activeEmailsCount >= emailLimit) {
         return NextResponse.json(
-          { error: `已达到最大邮箱数量限制 (${maxEmails})` },
+          { error: `已达到最大邮箱数量限制 (${emailLimit})` },
           { status: 403 }
         )
       }

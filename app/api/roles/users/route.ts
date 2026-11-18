@@ -1,6 +1,6 @@
 import { createDb } from "@/lib/db"
-import { users, userRoles, roles } from "@/lib/schema"
-import { eq, like, or, sql } from "drizzle-orm"
+import { users, userRoles, roles, emails } from "@/lib/schema"
+import { and, eq, gt, inArray, like, or, sql } from "drizzle-orm"
 import { checkPermission } from "@/lib/auth"
 import { PERMISSIONS, ROLES } from "@/lib/permissions"
 
@@ -49,6 +49,7 @@ export async function GET(request: Request) {
         username: users.username,
         email: users.email,
         image: users.image,
+        emailLimit: users.emailLimit,
         role: roles.name,
       })
       .from(users)
@@ -59,6 +60,28 @@ export async function GET(request: Request) {
       .limit(pageSize)
       .offset((page - 1) * pageSize)
 
+    // 当前页用户的未过期邮箱数（一次分组统计，避免逐用户查询）
+    const pageUserIds = userList.map((u) => u.id)
+    const activeCounts = new Map<string, number>()
+    if (pageUserIds.length > 0) {
+      const countRows = await db
+        .select({
+          userId: emails.userId,
+          count: sql<number>`count(*)`,
+        })
+        .from(emails)
+        .where(
+          and(
+            inArray(emails.userId, pageUserIds),
+            gt(emails.expiresAt, new Date())
+          )
+        )
+        .groupBy(emails.userId)
+      for (const row of countRows) {
+        if (row.userId) activeCounts.set(row.userId, Number(row.count))
+      }
+    }
+
     return Response.json({
       users: userList.map((u) => ({
         id: u.id,
@@ -67,6 +90,8 @@ export async function GET(request: Request) {
         email: u.email,
         image: u.image,
         role: u.role || null,
+        emailLimit: u.emailLimit ?? null,
+        activeEmailCount: activeCounts.get(u.id) ?? 0,
       })),
       total,
       page,
