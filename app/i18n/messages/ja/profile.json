@@ -211,7 +211,8 @@
     "accessKeyCleared": "Access key cleared",
     "accessKeySaveFailed": "Failed to save access key",
     "accessKeyClearFailed": "Failed to clear access key",
-    "accessKeyTooShort": "Key must be at least 12 characters"
+    "accessKeyTooShort": "Key must be at least 12 characters",
+    "noEmailPermission": "No email access"
   },
   "space": {
     "title": "User Mail Space (Admin)",
@@ -241,6 +242,10 @@
     "deleteFailed": "Delete failed",
     "from": "From",
     "to": "To",
-    "date": "Date"
+    "date": "Date",
+    "modifyExpiry": "Modify duration",
+    "expiryUpdated": "Expiry updated",
+    "expiryUpdateFailed": "Failed to update expiry",
+    "reorderFailed": "Failed to save order"
   }
 }

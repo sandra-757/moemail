@@ -397,10 +397,12 @@ export function UserManagementPanel() {
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground truncate mt-0.5">
-                      {t("emailUsage", {
-                        count: user.activeEmailCount,
-                        limit: user.emailLimit != null ? user.emailLimit : t("defaultLimit"),
-                      })}
+                      {isCivilian
+                        ? t("noEmailPermission")
+                        : t("emailUsage", {
+                            count: user.activeEmailCount,
+                            limit: user.emailLimit != null ? user.emailLimit : t("defaultLimit"),
+                          })}
                     </div>
                   </div>
 
@@ -534,17 +536,19 @@ export function UserManagementPanel() {
               <Label>{t("role")}</Label>
               {roleSelect(createRole, setCreateRole)}
             </div>
-            <div className="space-y-2">
-              <Label>{t("emailLimit")}</Label>
-              <Input
-                type="number"
-                min="1"
-                max="100000"
-                value={createEmailLimit}
-                onChange={(e) => setCreateEmailLimit(e.target.value)}
-                placeholder={t("emailLimitPlaceholder")}
-              />
-            </div>
+            {createRole !== ROLES.CIVILIAN && (
+              <div className="space-y-2">
+                <Label>{t("emailLimit")}</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100000"
+                  value={createEmailLimit}
+                  onChange={(e) => setCreateEmailLimit(e.target.value)}
+                  placeholder={t("emailLimitPlaceholder")}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
@@ -584,18 +588,20 @@ export function UserManagementPanel() {
               <Label>{t("role")}</Label>
               {roleSelect(editRole, setEditRole)}
             </div>
-            <div className="space-y-2">
-              <Label>{t("emailLimit")}</Label>
-              <Input
-                type="number"
-                min="1"
-                max="100000"
-                value={editEmailLimit}
-                onChange={(e) => setEditEmailLimit(e.target.value)}
-                placeholder={t("emailLimitPlaceholder")}
-              />
-              <p className="text-xs text-muted-foreground">{t("emailLimitHint")}</p>
-            </div>
+            {editRole !== ROLES.CIVILIAN && (
+              <div className="space-y-2">
+                <Label>{t("emailLimit")}</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100000"
+                  value={editEmailLimit}
+                  onChange={(e) => setEditEmailLimit(e.target.value)}
+                  placeholder={t("emailLimitPlaceholder")}
+                />
+                <p className="text-xs text-muted-foreground">{t("emailLimitHint")}</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditUser(null)}>

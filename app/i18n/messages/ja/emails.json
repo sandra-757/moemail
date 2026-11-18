@@ -28,7 +28,11 @@
     "deleteSuccess": "メールボックスを削除しました",
     "deleteFailed": "メールボックスの削除に失敗しました",
     "error": "エラー",
-    "success": "成功"
+    "success": "成功",
+    "modifyExpiry": "Modify duration",
+    "expiryUpdated": "Expiry updated",
+    "expiryUpdateFailed": "Failed to update expiry",
+    "reorderFailed": "Failed to save order"
   },
   "create": {
     "title": "メールボックスを作成",

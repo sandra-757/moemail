@@ -31,11 +31,17 @@ export async function GET(request: Request) {
     const conditions = [baseConditions]
 
     if (cursor) {
-      const { timestamp, id } = decodeCursor(cursor)
+      const { timestamp, id, sort } = decodeCursor(cursor)
+      const sortVal = sort ?? 0
       conditions.push(
         or(
-          lt(emails.createdAt, new Date(timestamp)),
+          gt(emails.sortOrder, sortVal),
           and(
+            eq(emails.sortOrder, sortVal),
+            lt(emails.createdAt, new Date(timestamp))
+          ),
+          and(
+            eq(emails.sortOrder, sortVal),
             eq(emails.createdAt, new Date(timestamp)),
             lt(emails.id, id)
           )
@@ -45,7 +51,8 @@ export async function GET(request: Request) {
 
     const results = await db.query.emails.findMany({
       where: and(...conditions),
-      orderBy: (emails, { desc }) => [
+      orderBy: (emails, { asc, desc }) => [
+        asc(emails.sortOrder),
         desc(emails.createdAt),
         desc(emails.id)
       ],
@@ -56,7 +63,8 @@ export async function GET(request: Request) {
     const nextCursor = hasMore 
       ? encodeCursor(
           results[PAGE_SIZE - 1].createdAt.getTime(),
-          results[PAGE_SIZE - 1].id
+          results[PAGE_SIZE - 1].id,
+          results[PAGE_SIZE - 1].sortOrder
         )
       : null
     const emailList = hasMore ? results.slice(0, PAGE_SIZE) : results

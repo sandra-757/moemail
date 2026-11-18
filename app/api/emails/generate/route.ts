@@ -10,6 +10,7 @@ import { getUserRole } from "@/lib/auth"
 import { ROLES } from "@/lib/permissions"
 import { parseConfigBool, SITE_CONFIG_DEFAULTS } from "@/lib/site-config"
 import { resolveEmailLimit, countActiveEmails } from "@/lib/email-limit"
+import { nextSortOrder } from "@/lib/email-expiry"
 
 export const runtime = "edge"
 
@@ -100,11 +101,18 @@ export async function POST(request: Request) {
     const expires = expiryTime === 0 
       ? new Date('9999-01-01T00:00:00.000Z')
       : new Date(now.getTime() + expiryTime)
+
+    const minRows = await db
+      .select({ min: sql<number | null>`min(${emails.sortOrder})` })
+      .from(emails)
+      .where(eq(emails.userId, userId!))
+    const sortOrder = nextSortOrder(minRows[0]?.min)
     
     const emailData: typeof emails.$inferInsert = {
       address,
       createdAt: now,
       expiresAt: expires,
+      sortOrder,
       userId: userId!
     }
     

@@ -4,6 +4,9 @@ import { emails, messages, emailShares, messageShares } from "@/lib/schema"
 import { eq, inArray } from "drizzle-orm"
 import { isAdminAuthorized } from "@/lib/admin-access"
 import { loadOwnedEmail, isSpaceTargetForbidden, SPACE_TARGET_FORBIDDEN_ERROR } from "@/lib/admin-space"
+import { getRequestContext } from "@cloudflare/next-on-pages"
+import { ROLES } from "@/lib/permissions"
+import { computeExpiresAt } from "@/lib/email-expiry"
 
 export const runtime = "edge"
 
@@ -46,5 +49,46 @@ export async function DELETE(
   } catch (error) {
     console.error("Failed to delete email in admin space:", error)
     return NextResponse.json({ error: "删除邮箱失败" }, { status: 500 })
+  }
+}
+
+/** 管理员修改某用户邮箱的有效期：expiryTime 为相对时长（毫秒，0 = 永久），从现在起算；操作者按皇帝口径 */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ userId: string; emailId: string }> }
+) {
+  if (!(await isAdminAuthorized(request))) {
+    return NextResponse.json({ error: "未授权" }, { status: 401 })
+  }
+
+  const { userId, emailId } = await params
+  const db = createDb()
+
+  if (await isSpaceTargetForbidden(db, userId)) {
+    return NextResponse.json({ error: SPACE_TARGET_FORBIDDEN_ERROR }, { status: 403 })
+  }
+
+  try {
+    const email = await loadOwnedEmail(db, userId, emailId)
+    if (!email) {
+      return NextResponse.json({ error: "邮箱不存在" }, { status: 404 })
+    }
+
+    const { expiryTime } = (await request.json()) as { expiryTime?: number }
+    const result = await computeExpiresAt(
+      getRequestContext().env.SITE_CONFIG,
+      ROLES.EMPEROR,
+      expiryTime
+    )
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status })
+    }
+
+    await db.update(emails).set({ expiresAt: result.expiresAt }).where(eq(emails.id, emailId))
+
+    return NextResponse.json({ success: true, expiresAt: result.expiresAt.getTime() })
+  } catch (error) {
+    console.error("Failed to update email expiry in admin space:", error)
+    return NextResponse.json({ error: "修改邮箱有效期失败" }, { status: 500 })
   }
 }

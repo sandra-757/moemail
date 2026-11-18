@@ -211,7 +211,8 @@
     "accessKeyCleared": "Access key cleared",
     "accessKeySaveFailed": "Failed to save access key",
     "accessKeyClearFailed": "Failed to clear access key",
-    "accessKeyTooShort": "Key must be at least 12 characters"
+    "accessKeyTooShort": "Key must be at least 12 characters",
+    "noEmailPermission": "無信箱權限"
   },
   "space": {
     "title": "User Mail Space (Admin)",
@@ -241,6 +242,10 @@
     "deleteFailed": "Delete failed",
     "from": "From",
     "to": "To",
-    "date": "Date"
+    "date": "Date",
+    "modifyExpiry": "修改時效",
+    "expiryUpdated": "有效期已更新",
+    "expiryUpdateFailed": "修改有效期失敗",
+    "reorderFailed": "排序儲存失敗"
   }
 }

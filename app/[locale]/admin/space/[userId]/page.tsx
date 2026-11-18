@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import {
   ArrowLeft,
+  Clock,
+  GripVertical,
   Loader2,
   Trash2,
   KeyRound,
@@ -87,6 +89,7 @@ export default function AdminSpacePage({
   const t = useTranslations("profile.space")
   const tCreate = useTranslations("emails.create")
   const tPromote = useTranslations("profile.promote")
+  const tCommon = useTranslations("common.actions")
   const locale = useLocale()
   const router = useRouter()
   const { toast } = useToast()
@@ -114,6 +117,12 @@ export default function AdminSpacePage({
   const [emailToDelete, setEmailToDelete] = useState<SpaceEmail | null>(null)
   const [messageToDelete, setMessageToDelete] = useState<SpaceMessage | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  const [expiryEmail, setExpiryEmail] = useState<SpaceEmail | null>(null)
+  const [expiryValue, setExpiryValue] = useState<string>(EXPIRY_OPTIONS[1].value.toString())
+  const [savingExpiry, setSavingExpiry] = useState(false)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
 
   const authHeaders = useCallback(
     (key: string): Record<string, string> =>
@@ -302,6 +311,58 @@ export default function AdminSpacePage({
     }
   }
 
+  const handleSaveExpiry = async () => {
+    if (!expiryEmail) return
+    setSavingExpiry(true)
+    try {
+      const res = await fetch(`/api/admin/space/${userId}/emails/${expiryEmail.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders(accessKey) },
+        body: JSON.stringify({ expiryTime: Number(expiryValue) }),
+      })
+      const data = (await res.json().catch(() => null)) as { error?: string; expiresAt?: number } | null
+      if (!res.ok) throw new Error(data?.error || t("expiryUpdateFailed"))
+      setSpaceEmails((prev) =>
+        prev.map((e) => (e.id === expiryEmail.id ? { ...e, expiresAt: data?.expiresAt ?? e.expiresAt } : e))
+      )
+      toast({ title: t("expiryUpdated") })
+      setExpiryEmail(null)
+    } catch (error) {
+      toast({
+        title: t("expiryUpdateFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      })
+    } finally {
+      setSavingExpiry(false)
+    }
+  }
+
+  const handleEmailDrop = async (targetId: string) => {
+    const sourceId = dragId
+    setDragId(null)
+    setOverId(null)
+    if (!sourceId || sourceId === targetId) return
+    const from = spaceEmails.findIndex((e) => e.id === sourceId)
+    const to = spaceEmails.findIndex((e) => e.id === targetId)
+    if (from === -1 || to === -1) return
+    const reordered = [...spaceEmails]
+    const [moved] = reordered.splice(from, 1)
+    reordered.splice(to, 0, moved)
+    setSpaceEmails(reordered)
+    try {
+      const res = await fetch(`/api/admin/space/${userId}/emails/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders(accessKey) },
+        body: JSON.stringify({ ids: reordered.map((e) => e.id) }),
+      })
+      if (!res.ok) throw new Error("reorder failed")
+    } catch {
+      toast({ title: t("reorderFailed"), variant: "destructive" })
+      await fetchSpace(accessKey)
+    }
+  }
+
   const formatDate = (value: string | number) =>
     new Date(value).toLocaleString(locale === "zh-CN" ? "zh-CN" : undefined)
 
@@ -448,13 +509,35 @@ export default function AdminSpacePage({
                       {spaceEmails.map((email) => (
                         <div
                           key={email.id}
+                          draggable
+                          onDragStart={(e) => {
+                            setDragId(email.id)
+                            e.dataTransfer.effectAllowed = "move"
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            if (overId !== email.id) setOverId(email.id)
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            handleEmailDrop(email.id)
+                          }}
+                          onDragEnd={() => {
+                            setDragId(null)
+                            setOverId(null)
+                          }}
                           className={`flex items-center gap-2 p-3 rounded-lg border transition-colors cursor-pointer ${
                             selectedEmail?.id === email.id
                               ? "border-primary bg-primary/5"
                               : "border-border hover:bg-accent/50"
+                          } ${dragId === email.id ? "opacity-50" : ""} ${
+                            overId === email.id && dragId && dragId !== email.id ? "ring-1 ring-primary" : ""
                           }`}
                           onClick={() => openEmail(email)}
                         >
+                          <span className="shrink-0 text-muted-foreground/50 cursor-grab">
+                            <GripVertical className="w-4 h-4" />
+                          </span>
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm truncate">{email.address}</div>
                             <div className="text-xs text-muted-foreground">
@@ -464,6 +547,19 @@ export default function AdminSpacePage({
                                 : `${t("expiresAt")}: ${formatDate(email.expiresAt)}`}
                             </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setExpiryValue(EXPIRY_OPTIONS[1].value.toString())
+                              setExpiryEmail(email)
+                            }}
+                            title={t("modifyExpiry")}
+                          >
+                            <Clock className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -607,6 +703,41 @@ export default function AdminSpacePage({
                   )}
                 </div>
               )}
+            </DialogContent>
+          </Dialog>
+
+          {/* 修改邮箱有效期 */}
+          <Dialog open={!!expiryEmail} onOpenChange={(open) => { if (!open) setExpiryEmail(null) }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("modifyExpiry")}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground truncate">{expiryEmail?.address}</div>
+                <div className="space-y-2">
+                  <Label>{tCreate("expiryTime")}</Label>
+                  <Select value={expiryValue} onValueChange={setExpiryValue}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EXPIRY_OPTIONS.map((option, index) => (
+                        <SelectItem key={option.value} value={option.value.toString()}>
+                          {expiryLabels[index]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setExpiryEmail(null)}>
+                  {tCommon("cancel")}
+                </Button>
+                <Button onClick={handleSaveExpiry} disabled={savingExpiry}>
+                  {savingExpiry ? <Loader2 className="w-4 h-4 animate-spin" /> : tCommon("save")}
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
 

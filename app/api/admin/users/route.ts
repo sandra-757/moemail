@@ -48,7 +48,8 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    const emailLimit = (body.emailLimit ?? null) as number | null
+    // 平民没有邮箱权限，不支持个人上限
+    const emailLimit = roleName === ROLES.CIVILIAN ? null : ((body.emailLimit ?? null) as number | null)
 
     let user: typeof users.$inferSelect
     try {

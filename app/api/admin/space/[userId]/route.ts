@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { nanoid } from "nanoid"
 import { createDb } from "@/lib/db"
 import { emails, messages } from "@/lib/schema"
-import { eq, sql } from "drizzle-orm"
+import { asc, desc, eq, sql } from "drizzle-orm"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { ROLES } from "@/lib/permissions"
@@ -10,6 +10,7 @@ import { parseConfigBool, SITE_CONFIG_DEFAULTS } from "@/lib/site-config"
 import { isAdminAuthorized } from "@/lib/admin-access"
 import { loadSpaceUser, isSpaceTargetForbidden, SPACE_TARGET_FORBIDDEN_ERROR } from "@/lib/admin-space"
 import { resolveEmailLimit, countActiveEmails, getUserRoleName } from "@/lib/email-limit"
+import { nextSortOrder } from "@/lib/email-expiry"
 
 export const runtime = "edge"
 
@@ -47,7 +48,7 @@ export async function GET(
       })
       .from(emails)
       .where(eq(emails.userId, userId))
-      .orderBy(sql`${emails.createdAt} DESC`)
+      .orderBy(asc(emails.sortOrder), desc(emails.createdAt), desc(emails.id))
 
     // 消息数单独分组统计（相关子查询在 D1 上结果不可靠）
     const countRows = await db
@@ -161,12 +162,19 @@ export async function POST(
       ? new Date("9999-01-01T00:00:00.000Z")
       : new Date(now.getTime() + expiryTime)
 
+    const minRows = await db
+      .select({ min: sql<number | null>`min(${emails.sortOrder})` })
+      .from(emails)
+      .where(eq(emails.userId, userId))
+    const sortOrder = nextSortOrder(minRows[0]?.min)
+
     const result = await db
       .insert(emails)
       .values({
         address,
         createdAt: now,
         expiresAt: expires,
+        sortOrder,
         userId,
       })
       .returning({ id: emails.id, address: emails.address })

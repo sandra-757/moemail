@@ -5,6 +5,9 @@ import { eq, and, lt, or, sql, ne, isNull } from "drizzle-orm"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
 import { checkBasicSendPermission } from "@/lib/send-permissions"
+import { getRequestContext } from "@cloudflare/next-on-pages"
+import { getUserRoleName } from "@/lib/email-limit"
+import { computeExpiresAt } from "@/lib/email-expiry"
 
 export const runtime = "edge"
 
@@ -45,6 +48,55 @@ export async function DELETE(
     )
   }
 } 
+
+/** 修改自己邮箱的有效期：expiryTime 为相对时长（毫秒，0 = 永久），从现在起算 */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const userId = await getUserId()
+
+  try {
+    const db = createDb()
+    const { id } = await params
+    const email = await db.query.emails.findFirst({
+      where: and(
+        eq(emails.id, id),
+        eq(emails.userId, userId!)
+      )
+    })
+
+    if (!email) {
+      return NextResponse.json(
+        { error: "邮箱不存在或无权限修改" },
+        { status: 403 }
+      )
+    }
+
+    const { expiryTime } = (await request.json()) as { expiryTime?: number }
+    const role = await getUserRoleName(db, userId!)
+    const result = await computeExpiresAt(
+      getRequestContext().env.SITE_CONFIG,
+      role,
+      expiryTime
+    )
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status })
+    }
+
+    await db.update(emails)
+      .set({ expiresAt: result.expiresAt })
+      .where(eq(emails.id, id))
+
+    return NextResponse.json({ success: true, expiresAt: result.expiresAt.getTime() })
+  } catch (error) {
+    console.error('Failed to update email expiry:', error)
+    return NextResponse.json(
+      { error: "修改邮箱有效期失败" },
+      { status: 500 }
+    )
+  }
+}
 
 const PAGE_SIZE = 20
 

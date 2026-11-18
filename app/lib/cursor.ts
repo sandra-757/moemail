@@ -1,10 +1,11 @@
 interface CursorData {
   timestamp: number
   id: string
+  sort?: number
 }
 
-export function encodeCursor(timestamp: number, id: string): string {
-  const data: CursorData = { timestamp, id }
+export function encodeCursor(timestamp: number, id: string, sort?: number): string {
+  const data: CursorData = { timestamp, id, sort }
   return Buffer.from(JSON.stringify(data)).toString('base64')
 }
 

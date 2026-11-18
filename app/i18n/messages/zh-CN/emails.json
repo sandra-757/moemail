@@ -28,7 +28,11 @@
     "deleteSuccess": "邮箱已删除",
     "deleteFailed": "删除邮箱失败",
     "error": "错误",
-    "success": "成功"
+    "success": "成功",
+    "modifyExpiry": "修改时效",
+    "expiryUpdated": "有效期已更新",
+    "expiryUpdateFailed": "修改有效期失败",
+    "reorderFailed": "排序保存失败"
   },
   "create": {
     "title": "创建邮箱",

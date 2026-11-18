@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CreateDialog } from "./create-dialog"
 import { ShareDialog } from "./share-dialog"
-import { Mail, RefreshCw, Trash2 } from "lucide-react"
+import { Clock, GripVertical, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
@@ -24,6 +24,22 @@ import {
 import { ROLES } from "@/lib/permissions"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
+import { EXPIRY_OPTIONS } from "@/types/email"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Email {
   id: string
@@ -57,6 +73,96 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [total, setTotal] = useState(0)
   const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
   const { toast } = useToast()
+  const tCreate = useTranslations("emails.create")
+  const [expiryEmail, setExpiryEmail] = useState<Email | null>(null)
+  const [expiryValue, setExpiryValue] = useState<string>(EXPIRY_OPTIONS[1].value.toString())
+  const [savingExpiry, setSavingExpiry] = useState(false)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+  const [loadingAll, setLoadingAll] = useState(false)
+
+  const allowPermanentEmail = config?.allowPermanentEmail ?? true
+  const expiryLabels = [tCreate("oneHour"), tCreate("oneDay"), tCreate("threeDays"), tCreate("permanent")]
+  const visibleExpiryOptions = EXPIRY_OPTIONS
+    .map((option, index) => ({ option, label: expiryLabels[index] }))
+    .filter(({ option }) => allowPermanentEmail || option.value !== 0)
+
+  const allLoaded = !nextCursor
+
+  const ensureAllLoaded = async () => {
+    if (!nextCursor || loadingAll) return
+    setLoadingAll(true)
+    try {
+      let cursor: string | null = nextCursor
+      const collected: Email[] = []
+      while (cursor) {
+        const url = new URL("/api/emails", window.location.origin)
+        url.searchParams.set("cursor", cursor)
+        const response = await fetch(url)
+        const data = (await response.json()) as EmailResponse
+        collected.push(...data.emails)
+        cursor = data.nextCursor
+      }
+      setEmails((prev) => [...prev, ...collected])
+      setNextCursor(null)
+    } catch {
+      // 加载失败保持现状，仍可稍后重试
+    } finally {
+      setLoadingAll(false)
+    }
+  }
+
+  const handleSaveExpiry = async () => {
+    if (!expiryEmail) return
+    setSavingExpiry(true)
+    try {
+      const response = await fetch(`/api/emails/${expiryEmail.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expiryTime: Number(expiryValue) }),
+      })
+      const data = (await response.json().catch(() => null)) as { error?: string; expiresAt?: number } | null
+      if (!response.ok) throw new Error(data?.error || t("expiryUpdateFailed"))
+      setEmails((prev) =>
+        prev.map((e) => (e.id === expiryEmail.id ? { ...e, expiresAt: data?.expiresAt ?? e.expiresAt } : e))
+      )
+      toast({ title: t("expiryUpdated") })
+      setExpiryEmail(null)
+    } catch (error) {
+      toast({
+        title: t("expiryUpdateFailed"),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      })
+    } finally {
+      setSavingExpiry(false)
+    }
+  }
+
+  const handleDrop = async (targetId: string) => {
+    const sourceId = dragId
+    setDragId(null)
+    setOverId(null)
+    if (!sourceId || sourceId === targetId) return
+    const from = emails.findIndex((e) => e.id === sourceId)
+    const to = emails.findIndex((e) => e.id === targetId)
+    if (from === -1 || to === -1) return
+    const reordered = [...emails]
+    const [moved] = reordered.splice(from, 1)
+    reordered.splice(to, 0, moved)
+    setEmails(reordered)
+    try {
+      const response = await fetch("/api/emails/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: reordered.map((e) => e.id) }),
+      })
+      if (!response.ok) throw new Error("reorder failed")
+    } catch {
+      toast({ title: t("reorderFailed"), variant: "destructive" })
+      fetchEmails()
+    }
+  }
 
   const fetchEmails = async (cursor?: string) => {
     try {
@@ -193,12 +299,40 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
               {emails.map(email => (
                 <div
                   key={email.id}
+                  draggable={allLoaded}
+                  onDragStart={(e) => {
+                    setDragId(email.id)
+                    e.dataTransfer.effectAllowed = "move"
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    if (overId !== email.id) setOverId(email.id)
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    handleDrop(email.id)
+                  }}
+                  onDragEnd={() => {
+                    setDragId(null)
+                    setOverId(null)
+                  }}
                   className={cn("flex items-center gap-2 p-2 rounded cursor-pointer text-sm group",
                     "hover:bg-primary/5",
-                    selectedEmailId === email.id && "bg-primary/10"
+                    selectedEmailId === email.id && "bg-primary/10",
+                    dragId === email.id && "opacity-50",
+                    overId === email.id && dragId && dragId !== email.id && "ring-1 ring-primary/50"
                   )}
                   onClick={() => onEmailSelect(email)}
                 >
+                  <span
+                    className={cn("shrink-0 text-gray-300 group-hover:text-gray-400", allLoaded ? "cursor-grab" : "cursor-pointer")}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (!allLoaded) ensureAllLoaded()
+                    }}
+                  >
+                    {loadingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <GripVertical className="h-4 w-4" />}
+                  </span>
                   <Mail className="h-4 w-4 text-primary/60" />
                   <div className="truncate flex-1">
                     <div className="font-medium truncate">{email.address}</div>
@@ -211,6 +345,19 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                     </div>
                   </div>
                   <div className="opacity-0 group-hover:opacity-100 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title={t("modifyExpiry")}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setExpiryValue(EXPIRY_OPTIONS[1].value.toString())
+                        setExpiryEmail(email)
+                      }}
+                    >
+                      <Clock className="h-4 w-4" />
+                    </Button>
                     <ShareDialog emailId={email.id} emailAddress={email.address} />
                     <Button
                       variant="ghost"
@@ -239,6 +386,40 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
           )}
         </div>
       </div>
+
+      <Dialog open={!!expiryEmail} onOpenChange={(open) => { if (!open) setExpiryEmail(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("modifyExpiry")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground truncate">{expiryEmail?.address}</div>
+            <div className="space-y-2">
+              <Label>{tCreate("expiryTime")}</Label>
+              <Select value={expiryValue} onValueChange={setExpiryValue}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {visibleExpiryOptions.map(({ option, label }) => (
+                    <SelectItem key={option.value} value={option.value.toString()}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExpiryEmail(null)}>
+              {tCommon("cancel")}
+            </Button>
+            <Button onClick={handleSaveExpiry} disabled={savingExpiry}>
+              {savingExpiry ? <Loader2 className="w-4 h-4 animate-spin" /> : tCommon("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!emailToDelete} onOpenChange={() => setEmailToDelete(null)}>
         <AlertDialogContent>

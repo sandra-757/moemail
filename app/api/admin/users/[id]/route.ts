@@ -89,7 +89,11 @@ export async function PATCH(
       newRole = body.role
     }
 
-    if (body.emailLimit !== undefined) {
+    // 平民没有邮箱权限，不支持个人上限：最终角色为平民时强制清空（降级时一并清掉存量值）
+    const finalRole = newRole ?? targetRole
+    if (finalRole === ROLES.CIVILIAN) {
+      updates.emailLimit = null
+    } else if (body.emailLimit !== undefined) {
       if (!isValidUserEmailLimit(body.emailLimit)) {
         return Response.json(
           { error: `邮箱上限必须是 ${ROLE_LIMIT_MIN}–${ROLE_LIMIT_MAX} 的整数或 null（清除）` },

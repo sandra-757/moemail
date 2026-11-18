@@ -141,6 +141,13 @@
       "when": 1794970804371,
       "tag": "0019_freezing_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1794974342457,
+      "tag": "0020_smooth_the_order",
+      "breakpoints": true
     }
   ]
 }

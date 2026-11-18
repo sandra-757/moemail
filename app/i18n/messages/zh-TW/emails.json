@@ -28,7 +28,11 @@
     "deleteSuccess": "郵箱已刪除",
     "deleteFailed": "刪除郵箱失敗",
     "error": "錯誤",
-    "success": "成功"
+    "success": "成功",
+    "modifyExpiry": "修改時效",
+    "expiryUpdated": "有效期已更新",
+    "expiryUpdateFailed": "修改有效期失敗",
+    "reorderFailed": "排序儲存失敗"
   },
   "create": {
     "title": "建立郵箱",

@@ -211,7 +211,8 @@
     "accessKeyCleared": "特殊访问密钥已清除",
     "accessKeySaveFailed": "保存密钥失败",
     "accessKeyClearFailed": "清除密钥失败",
-    "accessKeyTooShort": "密钥长度至少为 12 个字符"
+    "accessKeyTooShort": "密钥长度至少为 12 个字符",
+    "noEmailPermission": "无邮箱权限"
   },
   "space": {
     "title": "用户邮箱空间（管理员）",
@@ -241,6 +242,10 @@
     "deleteFailed": "删除失败",
     "from": "发件人",
     "to": "收件人",
-    "date": "时间"
+    "date": "时间",
+    "modifyExpiry": "修改时效",
+    "expiryUpdated": "有效期已更新",
+    "expiryUpdateFailed": "修改有效期失败",
+    "reorderFailed": "排序保存失败"
   }
 }
