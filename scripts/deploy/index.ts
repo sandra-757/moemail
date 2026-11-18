@@ -141,8 +141,8 @@ const updateDatabaseConfig = (dbId: string) => {
 const updateKVConfig = (namespaceId: string) => {
   console.log(`📝 Updating KV namespace ID (${namespaceId}) in configurations...`);
 
-  // KV命名空间在主 wrangler.json 与收信 Worker 的 wrangler.email.json 中使用
-  for (const file of ["wrangler.json", "wrangler.email.json"]) {
+  // KV命名空间在主 wrangler.json、收信 Worker 与清理 Worker 的配置中使用
+  for (const file of ["wrangler.json", "wrangler.email.json", "wrangler.cleanup.json"]) {
     const wranglerPath = resolve(file);
     if (existsSync(wranglerPath)) {
       try {
