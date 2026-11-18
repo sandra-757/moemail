@@ -1,6 +1,7 @@
 "use client"
 
 import { User } from "next-auth"
+import type { ReactNode } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,7 @@ import { WebsiteConfigPanel } from "./website-config-panel"
 import { MailStatsPanel } from "./mail-stats-panel"
 import { ApiKeyPanel } from "./api-key-panel"
 import { UserManagementPanel } from "./user-management-panel"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface ProfileCardProps {
   user: User
@@ -64,12 +66,56 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const tAuth = useTranslations("auth.signButton")
   const tWebhook = useTranslations("profile.webhook")
   const tNav = useTranslations("common.nav")
+  const tAdmin = useTranslations("profile.adminTabs")
   const locale = useLocale()
   const router = useRouter()
   const { checkPermission } = useRolePermission()
   const canManageWebhook = checkPermission(PERMISSIONS.MANAGE_WEBHOOK)
   const canPromote = checkPermission(PERMISSIONS.PROMOTE_USER)
   const canManageConfig = checkPermission(PERMISSIONS.MANAGE_CONFIG)
+
+  const webhookBlock = canManageWebhook ? (
+    <div className="bg-background rounded-lg border-2 border-primary/20 p-6">
+      <div className="flex items-center gap-2 mb-6">
+        <Settings className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold">{tWebhook("title")}</h2>
+      </div>
+      <WebhookConfig />
+    </div>
+  ) : null
+
+  const adminTabs = [
+    canPromote && {
+      value: "users",
+      label: tAdmin("users"),
+      content: <UserManagementPanel />,
+    },
+    canManageConfig && {
+      value: "site",
+      label: tAdmin("siteConfig"),
+      content: <WebsiteConfigPanel />,
+    },
+    canManageConfig && {
+      value: "mailStats",
+      label: tAdmin("mailStats"),
+      content: <MailStatsPanel />,
+    },
+    canManageConfig && {
+      value: "mailService",
+      label: tAdmin("mailService"),
+      content: <EmailServiceConfig />,
+    },
+    canManageWebhook && {
+      value: "developer",
+      label: tAdmin("developer"),
+      content: (
+        <div className="space-y-6">
+          {webhookBlock}
+          <ApiKeyPanel />
+        </div>
+      ),
+    },
+  ].filter(Boolean) as Array<{ value: string; label: string; content: ReactNode }>
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -136,21 +182,25 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
       </div>
 
-      {canManageWebhook && (
-        <div className="bg-background rounded-lg border-2 border-primary/20 p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <Settings className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold">{tWebhook("title")}</h2>
-          </div>
-          <WebhookConfig />
+      {adminTabs.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold px-1">{tAdmin("title")}</h2>
+          <Tabs defaultValue={adminTabs[0].value}>
+            <TabsList className="w-full flex-wrap h-auto justify-start">
+              {adminTabs.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value}>
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {adminTabs.map((tab) => (
+              <TabsContent key={tab.value} value={tab.value} className="mt-4">
+                {tab.content}
+              </TabsContent>
+            ))}
+          </Tabs>
         </div>
       )}
-
-      {canManageConfig && <WebsiteConfigPanel />}
-      {canManageConfig && <MailStatsPanel />}
-      {canManageConfig && <EmailServiceConfig />}
-      {canPromote && <UserManagementPanel />}
-      {canManageWebhook && <ApiKeyPanel />}
 
       <div className="flex flex-col sm:flex-row gap-4 px-1">
         <Button

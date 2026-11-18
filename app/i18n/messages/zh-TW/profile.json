@@ -280,5 +280,13 @@
     "confirmDelete": "確認刪除",
     "actionSuccess": "已刪除 {count} 項",
     "actionFailed": "清理失敗"
+  },
+  "adminTabs": {
+    "title": "管理控制台",
+    "users": "使用者管理",
+    "siteConfig": "網站設定",
+    "mailStats": "郵件統計",
+    "mailService": "郵件服務",
+    "developer": "Webhook / API"
   }
 }

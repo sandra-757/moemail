@@ -280,5 +280,13 @@
     "confirmDelete": "Delete",
     "actionSuccess": "Deleted {count} item(s)",
     "actionFailed": "Cleanup failed"
+  },
+  "adminTabs": {
+    "title": "Admin console",
+    "users": "Users",
+    "siteConfig": "Site config",
+    "mailStats": "Mail statistics",
+    "mailService": "Mail service",
+    "developer": "Webhook / API"
   }
 }
