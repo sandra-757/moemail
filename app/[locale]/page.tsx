@@ -1,4 +1,5 @@
 import { Header } from "@/components/layout/header"
+import { SiteAnnouncement } from "@/components/site-announcement"
 import { auth } from "@/lib/auth"
 import { Shield, Share2, Clock, Code2 } from "lucide-react"
 import { ActionButton } from "@/components/home/action-button"
@@ -20,6 +21,7 @@ export default async function Home({
 
   return (
     <div className="bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen">
+      <SiteAnnouncement />
       <div className="container mx-auto px-4 lg:px-8 max-w-[1600px]">
         <Header />
         <main className="pt-16">

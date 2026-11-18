@@ -9,6 +9,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
 import { getUserRole } from "@/lib/auth"
 import { ROLES } from "@/lib/permissions"
+import { parseConfigBool, SITE_CONFIG_DEFAULTS } from "@/lib/site-config"
 
 export const runtime = "edge"
 
@@ -21,6 +22,18 @@ export async function POST(request: Request) {
 
   try {
     if (userRole !== ROLES.EMPEROR) {
+      const maintenanceMode = parseConfigBool(
+        await env.SITE_CONFIG.get("MAINTENANCE_MODE"),
+        SITE_CONFIG_DEFAULTS.MAINTENANCE_MODE
+      )
+      if (maintenanceMode) {
+        const maintenanceMessage = await env.SITE_CONFIG.get("MAINTENANCE_MESSAGE")
+        return NextResponse.json(
+          { error: maintenanceMessage?.trim() || "系统维护中，请稍后再试" },
+          { status: 503 }
+        )
+      }
+
       const maxEmails = await env.SITE_CONFIG.get("MAX_EMAILS") || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString()
       const activeEmailsCount = await db
         .select({ count: sql<number>`count(*)` })
@@ -51,6 +64,19 @@ export async function POST(request: Request) {
         { error: "无效的过期时间" },
         { status: 400 }
       )
+    }
+
+    if (expiryTime === 0 && userRole !== ROLES.EMPEROR) {
+      const allowPermanentEmail = parseConfigBool(
+        await env.SITE_CONFIG.get("ALLOW_PERMANENT_EMAIL"),
+        SITE_CONFIG_DEFAULTS.ALLOW_PERMANENT_EMAIL
+      )
+      if (!allowPermanentEmail) {
+        return NextResponse.json(
+          { error: "当前不允许创建永久邮箱" },
+          { status: 403 }
+        )
+      }
     }
 
     const domainString = await env.SITE_CONFIG.get("EMAIL_DOMAINS")

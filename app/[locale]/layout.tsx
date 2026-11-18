@@ -10,8 +10,20 @@ import { cn } from "@/lib/utils"
 import { zpix } from "../fonts"
 import "../globals.css"
 import { Providers } from "../providers"
+import { getRequestContext } from "@cloudflare/next-on-pages"
+import { SITE_CONFIG_DEFAULTS, parseSiteName } from "@/lib/site-config"
 
 export const runtime = "edge"
+
+/** 从 SITE_CONFIG KV 读取站点名称，读取失败（无请求上下文等）时回退默认值 */
+async function getSiteName(): Promise<string> {
+  try {
+    const env = getRequestContext().env
+    return parseSiteName(await env.SITE_CONFIG.get("SITE_NAME"))
+  } catch {
+    return SITE_CONFIG_DEFAULTS.SITE_NAME
+  }
+}
 
 export const viewport: Viewport = {
   themeColor: '#826DD9',
@@ -44,6 +56,7 @@ export async function generateMetadata({
   const { locale: localeFromParams } = await params
   const locale = localeFromParams as Locale
   const t = await getTranslations({ locale, namespace: "metadata" })
+  const siteName = await getSiteName()
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://moemail.app"
   
@@ -74,7 +87,7 @@ export async function generateMetadata({
       url: `${baseUrl}/${locale}`,
       title: t("title"),
       description: t("description"),
-      siteName: "MoeMail",
+      siteName,
     },
     twitter: {
       card: "summary_large_image",
@@ -106,14 +119,15 @@ export default async function LocaleLayout({
   }
 
   const messages = await getMessages(locale)
+  const siteName = await getSiteName()
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        <meta name="application-name" content="MoeMail" />
+        <meta name="application-name" content={siteName} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="MoeMail" />
+        <meta name="apple-mobile-web-app-title" content={siteName} />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>

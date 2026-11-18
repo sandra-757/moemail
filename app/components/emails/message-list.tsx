@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useThrottle } from "@/hooks/use-throttle"
 import { EMAIL_CONFIG } from "@/config"
+import { useConfig } from "@/hooks/use-config"
 import { useToast } from "@/components/ui/use-toast"
 import { ShareMessageDialog } from "./share-message-dialog"
 import {
@@ -62,6 +63,11 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
   const [total, setTotal] = useState(0)
   const [messageToDelete, setMessageToDelete] = useState<Message | null>(null)
   const { toast } = useToast()
+  const { config } = useConfig()
+  // 轮询间隔：优先用管理员配置（秒），配置未加载时回退 EMAIL_CONFIG.POLL_INTERVAL（毫秒）
+  const pollIntervalMs = config ? config.pollIntervalSeconds * 1000 : EMAIL_CONFIG.POLL_INTERVAL
+  const pollIntervalRef = useRef(pollIntervalMs)
+  pollIntervalRef.current = pollIntervalMs
 
   // 当 messages 改变时更新 ref
   useEffect(() => {
@@ -117,7 +123,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
       if (!refreshing && !loadingMore) {
         fetchMessages()
       }
-    }, EMAIL_CONFIG.POLL_INTERVAL)
+    }, pollIntervalRef.current)
   }
 
   const stopPolling = () => {
@@ -197,6 +203,16 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email.id])
+
+  // 配置加载/变更导致轮询间隔变化时，重启轮询以应用新间隔
+  const appliedPollIntervalRef = useRef<number>(EMAIL_CONFIG.POLL_INTERVAL)
+  useEffect(() => {
+    if (!email.id) return
+    if (pollIntervalMs === appliedPollIntervalRef.current) return
+    appliedPollIntervalRef.current = pollIntervalMs
+    startPolling()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollIntervalMs, email.id])
 
   useEffect(() => {
     if (refreshTrigger && refreshTrigger > 0) {

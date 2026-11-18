@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -94,6 +94,26 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
     }
   }, [config])
 
+  // 配置加载后，把初始有效期设为管理员配置的默认值（仅应用一次，不覆盖用户后续选择）；
+  // 若默认值为永久但站点不允许永久邮箱，则回退到 EXPIRY_OPTIONS[1]
+  const defaultExpiryAppliedRef = useRef(false)
+  useEffect(() => {
+    if (!config || defaultExpiryAppliedRef.current) return
+    defaultExpiryAppliedRef.current = true
+    const fallback = EXPIRY_OPTIONS[1].value
+    const configured = EXPIRY_OPTIONS.some((option) => option.value === config.defaultExpiry)
+      ? config.defaultExpiry
+      : fallback
+    const effective = configured === 0 && !config.allowPermanentEmail ? fallback : configured
+    setExpiryTime(effective.toString())
+  }, [config])
+
+  const allowPermanentEmail = config?.allowPermanentEmail ?? true
+  const expiryLabels = [t("oneHour"), t("oneDay"), t("threeDays"), t("permanent")]
+  const visibleExpiryOptions = EXPIRY_OPTIONS
+    .map((option, index) => ({ option, label: expiryLabels[index] }))
+    .filter(({ option }) => allowPermanentEmail || option.value !== 0)
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -143,17 +163,14 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
               onValueChange={setExpiryTime}
               className="flex gap-6"
             >
-              {EXPIRY_OPTIONS.map((option, index) => {
-                const labels = [t("oneHour"), t("oneDay"), t("threeDays"), t("permanent")]
-                return (
-                  <div key={option.value} className="flex items-center gap-2">
-                    <RadioGroupItem value={option.value.toString()} id={option.value.toString()} />
-                    <Label htmlFor={option.value.toString()} className="cursor-pointer text-sm">
-                      {labels[index]}
-                    </Label>
-                  </div>
-                )
-              })}
+              {visibleExpiryOptions.map(({ option, label }) => (
+                <div key={option.value} className="flex items-center gap-2">
+                  <RadioGroupItem value={option.value.toString()} id={option.value.toString()} />
+                  <Label htmlFor={option.value.toString()} className="cursor-pointer text-sm">
+                    {label}
+                  </Label>
+                </div>
+              ))}
             </RadioGroup>
           </div>
 

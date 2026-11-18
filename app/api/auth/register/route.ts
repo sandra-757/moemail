@@ -2,11 +2,24 @@ import { NextResponse } from "next/server"
 import { register } from "@/lib/auth"
 import { authSchema, AuthSchema } from "@/lib/validation"
 import { verifyTurnstileToken } from "@/lib/turnstile"
+import { getRequestContext } from "@cloudflare/next-on-pages"
+import { parseConfigBool, SITE_CONFIG_DEFAULTS } from "@/lib/site-config"
 
 export const runtime = "edge"
 
 export async function POST(request: Request) {
   try {
+    const allowRegistration = parseConfigBool(
+      await getRequestContext().env.SITE_CONFIG.get("ALLOW_REGISTRATION"),
+      SITE_CONFIG_DEFAULTS.ALLOW_REGISTRATION
+    )
+    if (!allowRegistration) {
+      return NextResponse.json(
+        { error: "当前已关闭公开注册" },
+        { status: 403 }
+      )
+    }
+
     const json = await request.json() as AuthSchema
     
     try {

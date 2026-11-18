@@ -22,6 +22,7 @@ import {
 import { Github, Loader2, KeyRound, User2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Turnstile } from "@/components/auth/turnstile"
+import { useConfig } from "@/hooks/use-config"
 
 interface TurnstileConfigProps {
   enabled: boolean
@@ -49,6 +50,9 @@ export function LoginForm({ turnstile }: LoginFormProps) {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
   const { toast } = useToast()
   const t = useTranslations("auth.loginForm")
+  const { config } = useConfig()
+  // 配置未加载时按默认（允许注册）处理，加载后若管理员关闭注册则隐藏注册 Tab
+  const allowRegistration = config?.allowRegistration ?? true
 
   const turnstileSiteKey = turnstile?.siteKey ?? ""
   const turnstileEnabled = Boolean(turnstile?.enabled && turnstileSiteKey)
@@ -215,10 +219,12 @@ export function LoginForm({ turnstile }: LoginFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="px-6">
-        <Tabs value={activeTab} className="w-full" onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+        <Tabs value={allowRegistration ? activeTab : "login"} className="w-full" onValueChange={handleTabChange}>
+          <TabsList className={cn("grid w-full mb-6", allowRegistration ? "grid-cols-2" : "grid-cols-1")}>
             <TabsTrigger value="login">{t("tabs.login")}</TabsTrigger>
-            <TabsTrigger value="register">{t("tabs.register")}</TabsTrigger>
+            {allowRegistration && (
+              <TabsTrigger value="register">{t("tabs.register")}</TabsTrigger>
+            )}
           </TabsList>
           <div className="min-h-[220px]">
             <TabsContent value="login" className="space-y-4 mt-0">
