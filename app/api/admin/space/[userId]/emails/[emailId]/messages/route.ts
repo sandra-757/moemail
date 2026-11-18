@@ -3,7 +3,7 @@ import { createDb } from "@/lib/db"
 import { messages } from "@/lib/schema"
 import { desc, eq, sql } from "drizzle-orm"
 import { isAdminAuthorized } from "@/lib/admin-access"
-import { loadOwnedEmail } from "@/lib/admin-space"
+import { loadOwnedEmail, isSpaceTargetForbidden, SPACE_TARGET_FORBIDDEN_ERROR } from "@/lib/admin-space"
 
 export const runtime = "edge"
 
@@ -18,6 +18,10 @@ export async function GET(
 
   const { userId, emailId } = await params
   const db = createDb()
+
+  if (await isSpaceTargetForbidden(db, userId)) {
+    return NextResponse.json({ error: SPACE_TARGET_FORBIDDEN_ERROR }, { status: 403 })
+  }
 
   try {
     const email = await loadOwnedEmail(db, userId, emailId)

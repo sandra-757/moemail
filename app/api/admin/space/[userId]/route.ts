@@ -8,7 +8,7 @@ import { EXPIRY_OPTIONS } from "@/types/email"
 import { ROLES } from "@/lib/permissions"
 import { parseConfigBool, SITE_CONFIG_DEFAULTS } from "@/lib/site-config"
 import { isAdminAuthorized } from "@/lib/admin-access"
-import { loadSpaceUser } from "@/lib/admin-space"
+import { loadSpaceUser, isSpaceTargetForbidden, SPACE_TARGET_FORBIDDEN_ERROR } from "@/lib/admin-space"
 import { resolveEmailLimit, countActiveEmails, getUserRoleName } from "@/lib/email-limit"
 
 export const runtime = "edge"
@@ -24,6 +24,10 @@ export async function GET(
 
   const { userId } = await params
   const db = createDb()
+
+  if (await isSpaceTargetForbidden(db, userId)) {
+    return NextResponse.json({ error: SPACE_TARGET_FORBIDDEN_ERROR }, { status: 403 })
+  }
 
   try {
     const user = await loadSpaceUser(db, userId)
@@ -95,6 +99,10 @@ export async function POST(
 
   const { userId } = await params
   const db = createDb()
+
+  if (await isSpaceTargetForbidden(db, userId)) {
+    return NextResponse.json({ error: SPACE_TARGET_FORBIDDEN_ERROR }, { status: 403 })
+  }
   const env = getRequestContext().env
 
   try {

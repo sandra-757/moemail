@@ -382,6 +382,7 @@ export function UserManagementPanel() {
           <div className="space-y-2">
             {users.map((user) => {
               const isEmperor = user.role === ROLES.EMPEROR
+              const isCivilian = (user.role || ROLES.CIVILIAN) === ROLES.CIVILIAN
               const isSelf = user.id === currentUserId
               return (
                 <div
@@ -403,15 +404,17 @@ export function UserManagementPanel() {
                     </div>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => router.push(`/${locale}/admin/space/${user.id}`)}
-                  >
-                    <MailPlus className="w-4 h-4" />
-                    {t("enterSpace")}
-                  </Button>
+                  {!isCivilian && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => router.push(`/${locale}/admin/space/${user.id}`)}
+                    >
+                      <MailPlus className="w-4 h-4" />
+                      {t("enterSpace")}
+                    </Button>
+                  )}
                   {!isEmperor && (
                     <Button
                       variant="ghost"
