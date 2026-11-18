@@ -82,7 +82,6 @@ export function WebsiteConfigPanel() {
     emperor: "",
     duke: "",
     knight: "",
-    civilian: "",
   })
   // 人机验证
   const [turnstileEnabled, setTurnstileEnabled] = useState(false)
@@ -137,7 +136,6 @@ export function WebsiteConfigPanel() {
         emperor: data.roleLimits?.emperor ?? "",
         duke: data.roleLimits?.duke ?? "",
         knight: data.roleLimits?.knight ?? "",
-        civilian: data.roleLimits?.civilian ?? "",
       })
       setTurnstileEnabled(Boolean(data.turnstile?.enabled))
       setTurnstileSiteKey(data.turnstile?.siteKey ?? "")
@@ -369,7 +367,6 @@ export function WebsiteConfigPanel() {
               ["emperor", tCard("roles.EMPEROR")],
               ["duke", tCard("roles.DUKE")],
               ["knight", tCard("roles.KNIGHT")],
-              ["civilian", tCard("roles.CIVILIAN")],
             ] as const
           ).map(([field, label]) => (
             <div key={field} className="flex items-center gap-4">

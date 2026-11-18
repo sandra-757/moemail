@@ -18,10 +18,9 @@ import {
 import { ROLE_LIMIT_KV_KEYS, ROLE_LIMIT_MIN, ROLE_LIMIT_MAX, isValidRoleLimitInput } from "@/lib/email-limit"
 
 const ROLE_LIMIT_FIELDS = [
-  ["emperor", ROLE_LIMIT_KV_KEYS[ROLES.EMPEROR]],
-  ["duke", ROLE_LIMIT_KV_KEYS[ROLES.DUKE]],
-  ["knight", ROLE_LIMIT_KV_KEYS[ROLES.KNIGHT]],
-  ["civilian", ROLE_LIMIT_KV_KEYS[ROLES.CIVILIAN]],
+  ["emperor", ROLE_LIMIT_KV_KEYS[ROLES.EMPEROR] as string],
+  ["duke", ROLE_LIMIT_KV_KEYS[ROLES.DUKE] as string],
+  ["knight", ROLE_LIMIT_KV_KEYS[ROLES.KNIGHT] as string],
 ] as const
 
 type RoleLimitField = (typeof ROLE_LIMIT_FIELDS)[number][0]

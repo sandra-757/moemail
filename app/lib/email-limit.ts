@@ -15,11 +15,11 @@ import { EMAIL_CONFIG } from "@/config"
 export const ROLE_LIMIT_MIN = 1
 export const ROLE_LIMIT_MAX = 100000
 
-export const ROLE_LIMIT_KV_KEYS: Record<Role, string> = {
+// 平民没有任何邮箱权限（ROLE_PERMISSIONS 为空），设分组上限没有意义，不提供配置
+export const ROLE_LIMIT_KV_KEYS: Partial<Record<Role, string>> = {
   [ROLES.EMPEROR]: "MAX_EMAILS_EMPEROR",
   [ROLES.DUKE]: "MAX_EMAILS_DUKE",
   [ROLES.KNIGHT]: "MAX_EMAILS_KNIGHT",
-  [ROLES.CIVILIAN]: "MAX_EMAILS_CIVILIAN",
 }
 
 export interface SiteConfigKv {
@@ -80,8 +80,9 @@ export async function resolveEmailLimit(db: Db, kv: SiteConfigKv, userId: string
 
   const roleName = await getUserRoleName(db, userId)
 
-  if (roleName) {
-    const roleLimit = parseRoleLimit(await kv.get(ROLE_LIMIT_KV_KEYS[roleName]))
+  const roleLimitKey = roleName ? ROLE_LIMIT_KV_KEYS[roleName] : undefined
+  if (roleLimitKey) {
+    const roleLimit = parseRoleLimit(await kv.get(roleLimitKey))
     if (roleLimit !== null) {
       return roleLimit
     }
