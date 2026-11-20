@@ -222,3 +222,5 @@ ALTER TABLE `user` ADD `expired_to_trash` integer;
 - `npm run build` **exit=0，构建成功**；路由表含新增 `/api/admin/trash`、`/api/admin/trash/[emailId]`、`/api/admin/trash/[emailId]/restore`、`/api/users/me/settings`；仅有上游既有的 ESLint 警告（react-hooks/exhaustive-deps 等），无新增报错、无 i18n 缺键报错。
 - 未运行任何 deploy 脚本，未 push，未触碰线上实例。
 
+
+> 部署修复（2026-11-20，六期上线时）：六期构建产物将 Node 内置模块 async_hooks 打入中间件包，Pages 运行时 compatibility_date=2024-03-20 下无法提供该模块，导致整站 500（本地 wrangler pages dev 复现确认）。已将 wrangler.json（Pages）的 compatibility_date 提升至 2025-01-01（保留 nodejs_compat），重新部署后恢复。后续部署勿把该日期改回。
