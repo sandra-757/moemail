@@ -20,10 +20,13 @@ on:
           - new
           - both
         default: legacy
+  push:
+    branches:
+      - feat/admin-config-v1
 
 jobs:
   deploy-legacy:
-    if: ${{ inputs.target == 'legacy' || inputs.target == 'both' }}
+    if: ${{ github.event_name == 'push' || inputs.target == 'legacy' || inputs.target == 'both' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +58,7 @@ jobs:
         if: always()
 
   deploy-new:
-    if: ${{ inputs.target == 'new' || inputs.target == 'both' }}
+    if: ${{ github.event_name == 'push' || inputs.target == 'new' || inputs.target == 'both' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
