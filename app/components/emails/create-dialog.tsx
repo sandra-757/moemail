@@ -39,22 +39,15 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
   }
 
   const createEmail = async () => {
-    if (!emailName.trim()) {
-      toast({
-        title: tList("error"),
-        description: t("namePlaceholder"),
-        variant: "destructive"
-      })
-      return
-    }
-
+    // 名称留空 = 随机生成：后端以 name || nanoid(8) 兜底，前端不要拦截
+    // （此前这里误把空名当错误，还拿占位文案 namePlaceholder 当报错描述弹出）
     setLoading(true)
     try {
       const response = await fetch("/api/emails/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: emailName,
+          name: emailName.trim(),
           domain: currentDomain,
           expiryTime: parseInt(expiryTime)
         })
@@ -195,7 +188,7 @@ export function CreateDialog({ onEmailCreated }: CreateDialogProps) {
           <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
             {tCommon("cancel")}
           </Button>
-          <Button onClick={createEmail} disabled={loading}>
+          <Button onClick={createEmail} disabled={loading || !currentDomain}>
             {loading ? t("creating") : t("create")}
           </Button>
         </div>
