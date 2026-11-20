@@ -32,7 +32,11 @@
     "modifyExpiry": "修改时效",
     "expiryUpdated": "有效期已更新",
     "expiryUpdateFailed": "修改有效期失败",
-    "reorderFailed": "排序保存失败"
+    "reorderFailed": "排序保存失败",
+    "deleteDescriptionTrash": "邮箱 {email} 可以移入回收站：移入后 {days} 天内可联系管理员恢复；也可以选择彻底删除，邮箱与其中所有邮件将立即删除且不可恢复。",
+    "moveToTrash": "移入回收站",
+    "permanentDelete": "彻底删除",
+    "trashSuccess": "邮箱已移入回收站"
   },
   "create": {
     "title": "创建邮箱",

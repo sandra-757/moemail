@@ -82,6 +82,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [loadingAll, setLoadingAll] = useState(false)
 
   const allowPermanentEmail = config?.allowPermanentEmail ?? true
+  const trashEnabled = config?.mailboxTrashEnabled ?? false
   const expiryLabels = [tCreate("oneHour"), tCreate("oneDay"), tCreate("threeDays"), tCreate("permanent")]
   const visibleExpiryOptions = EXPIRY_OPTIONS
     .map((option, index) => ({ option, label: expiryLabels[index] }))
@@ -226,9 +227,9 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
     if (session) fetchEmails()
   }, [session])
 
-  const handleDelete = async (email: Email) => {
+  const handleDelete = async (email: Email, toTrash = true) => {
     try {
-      const response = await fetch(`/api/emails/${email.id}`, {
+      const response = await fetch(`/api/emails/${email.id}?toTrash=${toTrash}`, {
         method: "DELETE"
       })
 
@@ -247,7 +248,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
 
       toast({
         title: t("success"),
-        description: t("deleteSuccess")
+        description: toTrash && trashEnabled ? t("trashSuccess") : t("deleteSuccess")
       })
       
       if (selectedEmailId === email.id) {
@@ -426,17 +427,38 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("deleteConfirm")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("deleteDescription", { email: emailToDelete?.address || "" })}
+              {trashEnabled
+                ? t("deleteDescriptionTrash", {
+                    email: emailToDelete?.address || "",
+                    days: config?.trashRetentionDays ?? 30,
+                  })
+                : t("deleteDescription", { email: emailToDelete?.address || "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={() => emailToDelete && handleDelete(emailToDelete)}
-            >
-              {tCommon("delete")}
-            </AlertDialogAction>
+            {trashEnabled ? (
+              <>
+                <AlertDialogAction
+                  className="bg-destructive hover:bg-destructive/90"
+                  onClick={() => emailToDelete && handleDelete(emailToDelete, false)}
+                >
+                  {t("permanentDelete")}
+                </AlertDialogAction>
+                <AlertDialogAction
+                  onClick={() => emailToDelete && handleDelete(emailToDelete, true)}
+                >
+                  {t("moveToTrash")}
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                className="bg-destructive hover:bg-destructive/90"
+                onClick={() => emailToDelete && handleDelete(emailToDelete)}
+              >
+                {tCommon("delete")}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

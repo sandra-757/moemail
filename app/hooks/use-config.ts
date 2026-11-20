@@ -24,6 +24,9 @@ interface Config {
   pollIntervalSeconds: number
   saveOrphanMails: boolean
   keepMailsOnDelete: boolean
+  mailboxTrashEnabled: boolean
+  trashRetentionDays: number
+  expiredTrashDefault: boolean
   roleLimits: Record<"emperor" | "duke" | "knight", string>
 }
 
@@ -44,6 +47,9 @@ interface ConfigApiResponse {
   pollIntervalSeconds?: number
   saveOrphanMails?: boolean
   keepMailsOnDelete?: boolean
+  mailboxTrashEnabled?: boolean
+  trashRetentionDays?: number
+  expiredTrashDefault?: boolean
   roleLimits?: Partial<Record<"emperor" | "duke" | "knight", string>>
 }
 
@@ -75,6 +81,13 @@ const useConfigStore = create<ConfigStore>((set) => ({
         data.pollIntervalSeconds <= 120
           ? data.pollIntervalSeconds
           : SITE_CONFIG_DEFAULTS.POLL_INTERVAL_SECONDS
+      const trashRetentionDays =
+        typeof data.trashRetentionDays === "number" &&
+        Number.isInteger(data.trashRetentionDays) &&
+        data.trashRetentionDays >= 1 &&
+        data.trashRetentionDays <= 3650
+          ? data.trashRetentionDays
+          : SITE_CONFIG_DEFAULTS.TRASH_RETENTION_DAYS
       set({
         config: {
           defaultRole: data.defaultRole || ROLES.CIVILIAN,
@@ -93,6 +106,9 @@ const useConfigStore = create<ConfigStore>((set) => ({
           pollIntervalSeconds,
           saveOrphanMails: data.saveOrphanMails ?? SITE_CONFIG_DEFAULTS.SAVE_ORPHAN_MAILS,
           keepMailsOnDelete: data.keepMailsOnDelete ?? SITE_CONFIG_DEFAULTS.KEEP_MAILS_ON_DELETE,
+          mailboxTrashEnabled: data.mailboxTrashEnabled ?? SITE_CONFIG_DEFAULTS.MAILBOX_TRASH_ENABLED,
+          trashRetentionDays,
+          expiredTrashDefault: data.expiredTrashDefault ?? SITE_CONFIG_DEFAULTS.EXPIRED_TRASH_DEFAULT,
           roleLimits: {
             emperor: data.roleLimits?.emperor ?? "",
             duke: data.roleLimits?.duke ?? "",

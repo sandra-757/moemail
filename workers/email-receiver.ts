@@ -1,7 +1,7 @@
 import { Env } from '../types'
 import { drizzle } from 'drizzle-orm/d1'
 import { messages, emails, webhooks } from '../app/lib/schema'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import PostalMime from 'postal-mime'
 import { WEBHOOK_CONFIG } from '../app/config/webhook'
 import { EmailMessage } from '../app/lib/webhook'
@@ -14,8 +14,12 @@ const handleEmail = async (message: ForwardableEmailMessage, env: Env) => {
   console.log("parsedMessage:", parsedMessage)
 
   try {
+    // 软删（回收站中）的邮箱按不存在处理，走下方的不存在分支
     const targetEmail = await db.query.emails.findFirst({
-      where: eq(sql`LOWER(${emails.address})`, message.to.toLowerCase())
+      where: and(
+        eq(sql`LOWER(${emails.address})`, message.to.toLowerCase()),
+        isNull(emails.deletedAt)
+      )
     })
 
     if (!targetEmail) {

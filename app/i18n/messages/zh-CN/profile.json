@@ -149,7 +149,13 @@
     "saveOrphanMails": "保存无主邮件",
     "saveOrphanMailsDescription": "开启后，发往不存在邮箱的邮件会被保存下来；日后有人创建该邮箱时，可在其中看到这些邮件。关闭时这类邮件直接丢弃。",
     "keepMailsOnDelete": "删邮箱时保留邮件",
-    "keepMailsOnDeleteDescription": "开启后，删除邮箱只删邮箱本身，其中的邮件会被保留；日后重建同地址邮箱时可重新看到。关闭时邮件随邮箱一并删除。"
+    "keepMailsOnDeleteDescription": "开启后，删除邮箱只删邮箱本身，其中的邮件会被保留；日后重建同地址邮箱时可重新看到。关闭时邮件随邮箱一并删除。",
+    "mailboxTrashEnabled": "邮箱回收站",
+    "mailboxTrashEnabledDescription": "开启后，删除邮箱改为先进回收站（软删）：用户删箱时可自选移入回收站或彻底删除，管理员可在回收站恢复或彻底删除；超过保留天数自动清仓。关闭时删除行为与此前一致。",
+    "trashRetentionDays": "回收站保留天数",
+    "trashRetentionDaysDescription": "软删邮箱与无主（孤儿）邮件的保留天数，超期由定时清理自动彻底删除。范围 1–3650 天。",
+    "expiredTrashDefault": "到期进回收站（站点默认）",
+    "expiredTrashDefaultDescription": "邮箱到期时是否自动进入回收站的站点默认值；用户可在个人中心单独覆盖。仅在邮箱回收站开启时生效。"
   },
   "promote": {
     "title": "角色管理",
@@ -287,6 +293,41 @@
     "siteConfig": "网站配置",
     "mailStats": "邮件统计",
     "mailService": "邮件服务",
-    "developer": "Webhook / API"
+    "developer": "Webhook / API",
+    "trash": "回收站"
+  },
+  "trash": {
+    "title": "邮箱回收站",
+    "description": "被软删的邮箱（含邮件）会保留一段时间，可在此恢复或彻底删除；超过保留天数将由定时清理自动清仓。",
+    "refresh": "刷新",
+    "loading": "加载中…",
+    "loadFailed": "回收站加载失败",
+    "empty": "回收站是空的",
+    "address": "邮箱地址",
+    "owner": "属主",
+    "deletedAt": "删除时间",
+    "messageCount": "邮件数",
+    "messageCountValue": "{count} 封",
+    "actions": "操作",
+    "restore": "恢复",
+    "restoreSuccess": "邮箱已恢复",
+    "purgeSuccess": "邮箱已彻底删除",
+    "actionFailed": "操作失败",
+    "confirmPurgeTitle": "确认彻底删除",
+    "confirmPurgeDescription": "将彻底删除邮箱 {address} 及其 {count} 封邮件。",
+    "confirmIrreversible": "此操作不可恢复。",
+    "confirmPurge": "确认彻底删除"
+  },
+  "expiredTrash": {
+    "title": "邮箱到期处理",
+    "label": "我的邮箱到期后自动进入回收站",
+    "description": "开启后，我的邮箱过期时会被移入回收站，保留期内可联系管理员恢复；关闭时按站点保留规则处理（邮件转无主保留或随邮箱一并删除）。",
+    "followingDefault": "未单独设置，当前跟随站点默认（{state}）",
+    "customSet": "已单独设置，不跟随站点默认",
+    "resetToDefault": "恢复跟随站点默认",
+    "stateOn": "开启",
+    "stateOff": "关闭",
+    "saveSuccess": "设置已保存",
+    "saveFailed": "保存失败"
   }
 }

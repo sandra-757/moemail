@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getUserId } from "@/lib/apiKey"
 import { createDb } from "@/lib/db"
 import { emails, messages } from "@/lib/schema"
-import { eq } from "drizzle-orm"
+import { and, eq, isNull } from "drizzle-orm"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { checkSendPermission } from "@/lib/send-permissions"
 
@@ -80,7 +80,7 @@ export async function POST(
     }
 
     const email = await db.query.emails.findFirst({
-      where: eq(emails.id, id)
+      where: and(eq(emails.id, id), isNull(emails.deletedAt))
     })
 
     if (!email) {

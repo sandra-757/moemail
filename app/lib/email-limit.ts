@@ -1,4 +1,4 @@
-import { and, eq, gt, sql } from "drizzle-orm"
+import { and, eq, gt, isNull, sql } from "drizzle-orm"
 import type { Db } from "./db"
 import { emails, userRoles, users } from "./schema"
 import { ROLES, type Role } from "./permissions"
@@ -100,7 +100,7 @@ export async function resolveEmailLimit(db: Db, kv: SiteConfigKv, userId: string
   return EMAIL_CONFIG.MAX_ACTIVE_EMAILS
 }
 
-/** 统计用户当前未过期的邮箱数量 */
+/** 统计用户当前未过期、未软删的邮箱数量 */
 export async function countActiveEmails(db: Db, userId: string): Promise<number> {
   const result = await db
     .select({ count: sql<number>`count(*)` })
@@ -108,7 +108,8 @@ export async function countActiveEmails(db: Db, userId: string): Promise<number>
     .where(
       and(
         eq(emails.userId, userId),
-        gt(emails.expiresAt, new Date())
+        gt(emails.expiresAt, new Date()),
+        isNull(emails.deletedAt)
       )
     )
   return Number(result[0].count)

@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { signOut, useSession } from "next-auth/react"
-import { LogIn } from "lucide-react"
-import { useRouter } from 'next/navigation'
+import { LogIn, Mail } from "lucide-react"
+import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from "next-intl"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -15,9 +15,11 @@ interface SignButtonProps {
 
 export function SignButton({ size = "default" }: SignButtonProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const locale = useLocale()
   const { data: session, status } = useSession()
   const t = useTranslations("auth.signButton")
+  const tNav = useTranslations("common.nav")
   const loading = status === "loading"
 
   if (loading) {
@@ -50,6 +52,12 @@ export function SignButton({ size = "default" }: SignButtonProps) {
         )}
         <span className="hidden sm:inline-block text-sm">{session.user.name}</span>
       </Link>
+      {pathname !== `/${locale}/moe` && (
+        <Button onClick={() => router.push(`/${locale}/moe`)} variant="outline" className={cn("flex-shrink-0 gap-2", size === "lg" ? "px-8" : "")} size={size}>
+          <Mail className={size === "lg" ? "w-5 h-5" : "w-4 h-4"} />
+          {tNav("backToMailbox")}
+        </Button>
+      )}
       <Button onClick={() => signOut({ callbackUrl: `/${locale}` })} variant="outline" className={cn("flex-shrink-0", size === "lg" ? "px-8" : "")} size={size}>
         {t("logout")}
       </Button>

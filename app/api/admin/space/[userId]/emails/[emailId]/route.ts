@@ -7,7 +7,7 @@ import { loadOwnedEmail, isSpaceTargetForbidden, SPACE_TARGET_FORBIDDEN_ERROR } 
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { ROLES } from "@/lib/permissions"
 import { computeExpiresAt } from "@/lib/email-expiry"
-import { detachMessagesToOrphans, isKeepMailsOnDeleteEnabled } from "@/lib/orphan-mail"
+import { detachMessagesToOrphans, isKeepMailsOnDeleteEnabled, isMailboxTrashEnabled, moveMailboxToTrash } from "@/lib/orphan-mail"
 
 export const runtime = "edge"
 
@@ -33,8 +33,15 @@ export async function DELETE(
       return NextResponse.json({ error: "邮箱不存在" }, { status: 404 })
     }
 
+    const kv = getRequestContext().env.SITE_CONFIG
+    // 站点开关 MAILBOX_TRASH_ENABLED 开启时：软删进回收站（邮件保持挂载，管理员可恢复）
+    if (await isMailboxTrashEnabled(kv)) {
+      await moveMailboxToTrash(db, email)
+      return NextResponse.json({ success: true })
+    }
+
     // 站点开关 KEEP_MAILS_ON_DELETE 开启时：删邮箱保留邮件（转孤儿，日后同地址重建可认领）
-    const keepMails = await isKeepMailsOnDeleteEnabled(getRequestContext().env.SITE_CONFIG)
+    const keepMails = await isKeepMailsOnDeleteEnabled(kv)
     if (keepMails) {
       await detachMessagesToOrphans(db, email)
     } else {

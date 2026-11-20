@@ -149,7 +149,13 @@
     "saveOrphanMails": "Save mail to nonexistent mailboxes",
     "saveOrphanMailsDescription": "When on, mail sent to a mailbox that does not exist is saved; if that mailbox is created later, the saved mail appears in it. When off, such mail is discarded.",
     "keepMailsOnDelete": "Keep mail when a mailbox is deleted",
-    "keepMailsOnDeleteDescription": "When on, deleting a mailbox keeps its mail; recreating the same address later restores it. When off, mail is deleted together with the mailbox."
+    "keepMailsOnDeleteDescription": "When on, deleting a mailbox keeps its mail; recreating the same address later restores it. When off, mail is deleted together with the mailbox.",
+    "mailboxTrashEnabled": "Mailbox Trash",
+    "mailboxTrashEnabledDescription": "When enabled, deleting a mailbox moves it to the trash (soft delete) first: users choose trash or permanent deletion, admins can restore or purge from the trash panel, and entries past the retention period are purged automatically. When disabled, deletion behaves as before.",
+    "trashRetentionDays": "Trash Retention (days)",
+    "trashRetentionDaysDescription": "How long soft-deleted mailboxes and orphan messages are kept before the scheduled cleanup purges them permanently. Range 1-3650 days.",
+    "expiredTrashDefault": "Move to Trash on Expiry (site default)",
+    "expiredTrashDefaultDescription": "Site-wide default for whether expired mailboxes move to the trash; users can override it in their profile. Only applies when the mailbox trash is enabled."
   },
   "promote": {
     "title": "역할 관리",
@@ -287,6 +293,41 @@
     "siteConfig": "Site config",
     "mailStats": "Mail statistics",
     "mailService": "Mail service",
-    "developer": "Webhook / API"
+    "developer": "Webhook / API",
+    "trash": "Trash"
+  },
+  "trash": {
+    "title": "Mailbox Trash",
+    "description": "Soft-deleted mailboxes (with their messages) are kept for a while. Restore or permanently delete them here; entries past the retention period are purged automatically.",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "loadFailed": "Failed to load trash",
+    "empty": "The trash is empty",
+    "address": "Address",
+    "owner": "Owner",
+    "deletedAt": "Deleted at",
+    "messageCount": "Messages",
+    "messageCountValue": "{count}",
+    "actions": "Actions",
+    "restore": "Restore",
+    "restoreSuccess": "Mailbox restored",
+    "purgeSuccess": "Mailbox permanently deleted",
+    "actionFailed": "Action failed",
+    "confirmPurgeTitle": "Confirm Permanent Delete",
+    "confirmPurgeDescription": "This will permanently delete {address} and its {count} messages.",
+    "confirmIrreversible": "This action cannot be undone.",
+    "confirmPurge": "Delete Permanently"
+  },
+  "expiredTrash": {
+    "title": "Mailbox Expiry",
+    "label": "Move my mailboxes to the trash when they expire",
+    "description": "When enabled, your expired mailboxes are moved to the trash and an admin can restore them during the retention period. When disabled, the site retention rules apply (messages kept as orphans or deleted with the mailbox).",
+    "followingDefault": "Not set individually; following the site default ({state})",
+    "customSet": "Set individually; not following the site default",
+    "resetToDefault": "Reset to site default",
+    "stateOn": "On",
+    "stateOff": "Off",
+    "saveSuccess": "Setting saved",
+    "saveFailed": "Failed to save"
   }
 }

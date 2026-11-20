@@ -1,4 +1,4 @@
-import { count, eq, isNull, lt, sql } from "drizzle-orm"
+import { and, count, eq, isNull, lt, sql } from "drizzle-orm"
 import { PERMISSIONS } from "@/lib/permissions"
 import { checkPermission } from "@/lib/auth"
 import { createDb } from "@/lib/db"
@@ -8,7 +8,7 @@ export const runtime = "edge"
 
 const DAY_MS = 86400000
 
-/** 管理员邮件统计：邮箱/邮件总量、无主（孤儿）邮件、体积与可清理量 */
+/** 管理员邮件统计：邮箱/邮件总量、无主（孤儿）邮件、体积与可清理量（邮箱数不含回收站中的软删邮箱） */
 export async function GET() {
   const canAccess = await checkPermission(PERMISSIONS.MANAGE_CONFIG)
   if (!canAccess) {
@@ -34,8 +34,8 @@ export async function GET() {
     oldestOrphanRows,
     oldMessagesRows,
   ] = await Promise.all([
-    db.select({ value: count() }).from(emails),
-    db.select({ value: count() }).from(emails).where(lt(emails.expiresAt, now)),
+    db.select({ value: count() }).from(emails).where(isNull(emails.deletedAt)),
+    db.select({ value: count() }).from(emails).where(and(isNull(emails.deletedAt), lt(emails.expiresAt, now))),
     db.select({ value: count() }).from(messages),
     db.select({ value: count() }).from(messages).where(eq(messages.type, "received")),
     db.select({ value: count() }).from(messages).where(eq(messages.type, "sent")),

@@ -149,7 +149,13 @@
     "saveOrphanMails": "保存無主郵件",
     "saveOrphanMailsDescription": "開啟後，寄往不存在信箱的郵件會被保存；日後有人建立該信箱時，可在其中看到這些郵件。關閉時這類郵件直接丟棄。",
     "keepMailsOnDelete": "刪信箱時保留郵件",
-    "keepMailsOnDeleteDescription": "開啟後，刪除信箱只刪信箱本身，其中的郵件會被保留；日後重建同地址信箱時可重新看到。關閉時郵件隨信箱一併刪除。"
+    "keepMailsOnDeleteDescription": "開啟後，刪除信箱只刪信箱本身，其中的郵件會被保留；日後重建同地址信箱時可重新看到。關閉時郵件隨信箱一併刪除。",
+    "mailboxTrashEnabled": "信箱回收筒",
+    "mailboxTrashEnabledDescription": "開啟後，刪除信箱改為先進回收筒（軟刪除）：使用者刪箱時可自選移入回收筒或徹底刪除，管理員可在回收筒還原或徹底刪除；超過保留天數自動清倉。關閉時刪除行為與先前一致。",
+    "trashRetentionDays": "回收筒保留天數",
+    "trashRetentionDaysDescription": "軟刪除信箱與無主（孤兒）郵件的保留天數，超期由定時清理自動徹底刪除。範圍 1–3650 天。",
+    "expiredTrashDefault": "到期進回收筒（站點預設）",
+    "expiredTrashDefaultDescription": "信箱到期時是否自動進入回收筒的站點預設值；使用者可在個人中心單獨覆蓋。僅在信箱回收筒開啟時生效。"
   },
   "promote": {
     "title": "角色管理",
@@ -287,6 +293,41 @@
     "siteConfig": "網站設定",
     "mailStats": "郵件統計",
     "mailService": "郵件服務",
-    "developer": "Webhook / API"
+    "developer": "Webhook / API",
+    "trash": "回收筒"
+  },
+  "trash": {
+    "title": "信箱回收筒",
+    "description": "被軟刪除的信箱（含郵件）會保留一段時間，可在此還原或徹底刪除；超過保留天數將由定時清理自動清倉。",
+    "refresh": "重新整理",
+    "loading": "載入中…",
+    "loadFailed": "回收筒載入失敗",
+    "empty": "回收筒是空的",
+    "address": "信箱地址",
+    "owner": "屬主",
+    "deletedAt": "刪除時間",
+    "messageCount": "郵件數",
+    "messageCountValue": "{count} 封",
+    "actions": "操作",
+    "restore": "還原",
+    "restoreSuccess": "信箱已還原",
+    "purgeSuccess": "信箱已徹底刪除",
+    "actionFailed": "操作失敗",
+    "confirmPurgeTitle": "確認徹底刪除",
+    "confirmPurgeDescription": "將徹底刪除信箱 {address} 及其 {count} 封郵件。",
+    "confirmIrreversible": "此操作無法復原。",
+    "confirmPurge": "確認徹底刪除"
+  },
+  "expiredTrash": {
+    "title": "信箱到期處理",
+    "label": "我的信箱到期後自動進入回收筒",
+    "description": "開啟後，我的信箱過期時會被移入回收筒，保留期內可聯絡管理員還原；關閉時按站點保留規則處理（郵件轉無主保留或隨信箱一併刪除）。",
+    "followingDefault": "未單獨設定，目前跟隨站點預設（{state}）",
+    "customSet": "已單獨設定，不跟隨站點預設",
+    "resetToDefault": "恢復跟隨站點預設",
+    "stateOn": "開啟",
+    "stateOff": "關閉",
+    "saveSuccess": "設定已儲存",
+    "saveFailed": "儲存失敗"
   }
 }

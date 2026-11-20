@@ -8,7 +8,7 @@ import { checkBasicSendPermission } from "@/lib/send-permissions"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserRoleName } from "@/lib/email-limit"
 import { computeExpiresAt } from "@/lib/email-expiry"
-import { detachMessagesToOrphans, isKeepMailsOnDeleteEnabled } from "@/lib/orphan-mail"
+import { detachMessagesToOrphans, isKeepMailsOnDeleteEnabled, isMailboxTrashEnabled, moveMailboxToTrash, purgeMailbox } from "@/lib/orphan-mail"
 
 export const runtime = "edge"
 
@@ -24,7 +24,8 @@ export async function DELETE(
     const email = await db.query.emails.findFirst({
       where: and(
         eq(emails.id, id),
-        eq(emails.userId, userId!)
+        eq(emails.userId, userId!),
+        isNull(emails.deletedAt)
       )
     })
 
@@ -34,8 +35,21 @@ export async function DELETE(
         { status: 403 }
       )
     }
+    const kv = getRequestContext().env.SITE_CONFIG
+    // 站点开关 MAILBOX_TRASH_ENABLED 开启时，本人删除可二选一：
+    // 默认（未传参或 toTrash=true）软删进回收站；toTrash=false 为本人明确彻底删除——
+    // 不清孤儿、不走 KEEP 分支，邮箱与邮件一并硬删（shares 仍先清干净）
+    if (await isMailboxTrashEnabled(kv)) {
+      const toTrash = new URL(request.url).searchParams.get("toTrash") !== "false"
+      if (toTrash) {
+        await moveMailboxToTrash(db, email)
+      } else {
+        await purgeMailbox(db, email.id)
+      }
+      return NextResponse.json({ success: true })
+    }
     // 站点开关 KEEP_MAILS_ON_DELETE 开启时：删邮箱保留邮件（转孤儿，日后同地址重建可认领）
-    const keepMails = await isKeepMailsOnDeleteEnabled(getRequestContext().env.SITE_CONFIG)
+    const keepMails = await isKeepMailsOnDeleteEnabled(kv)
     if (keepMails) {
       await detachMessagesToOrphans(db, email)
     } else {
@@ -69,7 +83,8 @@ export async function PATCH(
     const email = await db.query.emails.findFirst({
       where: and(
         eq(emails.id, id),
-        eq(emails.userId, userId!)
+        eq(emails.userId, userId!),
+        isNull(emails.deletedAt)
       )
     })
 
@@ -133,7 +148,8 @@ export async function GET(
     const email = await db.query.emails.findFirst({
       where: and(
         eq(emails.id, id),
-        eq(emails.userId, userId!)
+        eq(emails.userId, userId!),
+        isNull(emails.deletedAt)
       )
     })
 

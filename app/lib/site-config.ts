@@ -16,10 +16,15 @@ export const SITE_CONFIG_DEFAULTS = {
   POLL_INTERVAL_SECONDS: 10,
   SAVE_ORPHAN_MAILS: false,
   KEEP_MAILS_ON_DELETE: false,
+  MAILBOX_TRASH_ENABLED: false,
+  TRASH_RETENTION_DAYS: 30,
+  EXPIRED_TRASH_DEFAULT: false,
 } as const
 
 export const POLL_INTERVAL_MIN_SECONDS = 3
 export const POLL_INTERVAL_MAX_SECONDS = 120
+export const TRASH_RETENTION_MIN_DAYS = 1
+export const TRASH_RETENTION_MAX_DAYS = 3650
 export const MAX_EMAILS_MIN = 1
 export const MAX_EMAILS_MAX = 10000
 
@@ -51,6 +56,20 @@ export function parsePollIntervalSeconds(value: string | null | undefined): numb
     return parsed
   }
   return SITE_CONFIG_DEFAULTS.POLL_INTERVAL_SECONDS
+}
+
+/** 解析回收站保留天数：整数且在 1–3650 范围内，否则回退默认值 */
+export function parseTrashRetentionDays(value: string | null | undefined): number {
+  const parsed = Number(value)
+  if (
+    value != null &&
+    Number.isInteger(parsed) &&
+    parsed >= TRASH_RETENTION_MIN_DAYS &&
+    parsed <= TRASH_RETENTION_MAX_DAYS
+  ) {
+    return parsed
+  }
+  return SITE_CONFIG_DEFAULTS.TRASH_RETENTION_DAYS
 }
 
 export function parseSiteName(value: string | null | undefined): string {

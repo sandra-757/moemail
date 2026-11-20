@@ -14,6 +14,7 @@ export const users = sqliteTable("user", {
   username: text("username").unique(),
   password: text("password"),
   emailLimit: integer("email_limit"),
+  expiredToTrash: integer("expired_to_trash", { mode: "boolean" }),
 })
 export const accounts = sqliteTable(
   "account",
@@ -48,9 +49,11 @@ export const emails = sqliteTable("email", {
     .notNull()
     .$defaultFn(() => new Date()),
   expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
   sortOrder: integer("sort_order").notNull().default(0),
 }, (table) => ({
   expiresAtIdx: index("email_expires_at_idx").on(table.expiresAt),
+  deletedAtIdx: index("email_deleted_at_idx").on(table.deletedAt),
   userIdIdx: index("email_user_id_idx").on(table.userId),
   addressLowerIdx: index("email_address_lower_idx").on(sql`LOWER(${table.address})`),
 }))

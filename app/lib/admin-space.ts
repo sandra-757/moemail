@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm"
+import { and, eq, isNull } from "drizzle-orm"
 import type { Db } from "./db"
 import { emails, messages, users } from "./schema"
 import { ROLES } from "./permissions"
@@ -25,7 +25,7 @@ export async function loadSpaceUser(db: Db, userId: string) {
 
 export async function loadOwnedEmail(db: Db, userId: string, emailId: string) {
   return db.query.emails.findFirst({
-    where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+    where: and(eq(emails.id, emailId), eq(emails.userId, userId), isNull(emails.deletedAt)),
   })
 }
 

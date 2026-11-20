@@ -79,6 +79,9 @@ export function WebsiteConfigPanel() {
   const [allowPermanentEmail, setAllowPermanentEmail] = useState(true)
   const [saveOrphanMails, setSaveOrphanMails] = useState(false)
   const [keepMailsOnDelete, setKeepMailsOnDelete] = useState(false)
+  const [mailboxTrashEnabled, setMailboxTrashEnabled] = useState(false)
+  const [trashRetentionDays, setTrashRetentionDays] = useState<string>(SITE_CONFIG_DEFAULTS.TRASH_RETENTION_DAYS.toString())
+  const [expiredTrashDefault, setExpiredTrashDefault] = useState(false)
   const [pollIntervalSeconds, setPollIntervalSeconds] = useState<string>(SITE_CONFIG_DEFAULTS.POLL_INTERVAL_SECONDS.toString())
   const [roleLimits, setRoleLimits] = useState<Record<string, string>>({
     emperor: "",
@@ -116,6 +119,9 @@ export function WebsiteConfigPanel() {
         pollIntervalSeconds?: number,
         saveOrphanMails?: boolean,
         keepMailsOnDelete?: boolean,
+        mailboxTrashEnabled?: boolean,
+        trashRetentionDays?: number,
+        expiredTrashDefault?: boolean,
         roleLimits?: Record<string, string>,
         turnstile?: {
           enabled: boolean,
@@ -137,6 +143,9 @@ export function WebsiteConfigPanel() {
       setAllowPermanentEmail(data.allowPermanentEmail ?? true)
       setSaveOrphanMails(data.saveOrphanMails ?? false)
       setKeepMailsOnDelete(data.keepMailsOnDelete ?? false)
+      setMailboxTrashEnabled(data.mailboxTrashEnabled ?? false)
+      setTrashRetentionDays((data.trashRetentionDays ?? SITE_CONFIG_DEFAULTS.TRASH_RETENTION_DAYS).toString())
+      setExpiredTrashDefault(data.expiredTrashDefault ?? false)
       setPollIntervalSeconds((data.pollIntervalSeconds ?? SITE_CONFIG_DEFAULTS.POLL_INTERVAL_SECONDS).toString())
       setRoleLimits({
         emperor: data.roleLimits?.emperor ?? "",
@@ -171,6 +180,9 @@ export function WebsiteConfigPanel() {
           pollIntervalSeconds: Number(pollIntervalSeconds),
           saveOrphanMails,
           keepMailsOnDelete,
+          mailboxTrashEnabled,
+          trashRetentionDays: Number(trashRetentionDays),
+          expiredTrashDefault,
           roleLimits,
           turnstile: {
             enabled: turnstileEnabled,
@@ -362,6 +374,39 @@ export function WebsiteConfigPanel() {
             description={t("keepMailsOnDeleteDescription")}
             checked={keepMailsOnDelete}
             onCheckedChange={setKeepMailsOnDelete}
+          />
+
+          <SwitchRow
+            id="mailbox-trash-enabled"
+            label={t("mailboxTrashEnabled")}
+            description={t("mailboxTrashEnabledDescription")}
+            checked={mailboxTrashEnabled}
+            onCheckedChange={setMailboxTrashEnabled}
+          />
+
+          <div className="flex items-center gap-4">
+            <span className="text-sm shrink-0">{t("trashRetentionDays")}:</span>
+            <div className="flex-1">
+              <Input
+                type="number"
+                min="1"
+                max="3650"
+                value={trashRetentionDays}
+                onChange={(e) => setTrashRetentionDays(e.target.value)}
+                placeholder={`${SITE_CONFIG_DEFAULTS.TRASH_RETENTION_DAYS}`}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("trashRetentionDaysDescription")}
+              </p>
+            </div>
+          </div>
+
+          <SwitchRow
+            id="expired-trash-default"
+            label={t("expiredTrashDefault")}
+            description={t("expiredTrashDefaultDescription")}
+            checked={expiredTrashDefault}
+            onCheckedChange={setExpiredTrashDefault}
           />
 
           <div className="flex items-center gap-4">

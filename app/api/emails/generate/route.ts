@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { nanoid } from "nanoid"
 import { createDb } from "@/lib/db"
 import { emails } from "@/lib/schema"
-import { eq, sql } from "drizzle-orm"
+import { and, eq, isNull, sql } from "drizzle-orm"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { getRequestContext } from "@cloudflare/next-on-pages"
 import { getUserId } from "@/lib/apiKey"
@@ -11,7 +11,7 @@ import { ROLES } from "@/lib/permissions"
 import { parseConfigBool, SITE_CONFIG_DEFAULTS } from "@/lib/site-config"
 import { resolveEmailLimit, countActiveEmails } from "@/lib/email-limit"
 import { nextSortOrder } from "@/lib/email-expiry"
-import { claimOrphanMessages, shouldClaimOrphans } from "@/lib/orphan-mail"
+import { claimOrphanMessages } from "@/lib/orphan-mail"
 
 export const runtime = "edge"
 
@@ -87,26 +87,38 @@ export async function POST(request: Request) {
     }
 
     const address = `${name || nanoid(8)}@${domain}`
+    const now = new Date()
+    const expires = expiryTime === 0
+      ? new Date('9999-01-01T00:00:00.000Z')
+      : new Date(now.getTime() + expiryTime)
+
     const existingEmail = await db.query.emails.findFirst({
       where: eq(sql`LOWER(${emails.address})`, address.toLowerCase())
     })
 
     if (existingEmail) {
+      // 同地址邮箱在回收站中且属于本人：直接恢复（按本次有效期更新），并认领孤儿邮件
+      if (existingEmail.deletedAt && existingEmail.userId === userId) {
+        await db
+          .update(emails)
+          .set({ deletedAt: null, expiresAt: expires })
+          .where(eq(emails.id, existingEmail.id))
+        await claimOrphanMessages(db, existingEmail.id, address)
+        return NextResponse.json({
+          id: existingEmail.id,
+          email: existingEmail.address
+        })
+      }
       return NextResponse.json(
         { error: "该邮箱地址已被使用" },
         { status: 409 }
       )
     }
 
-    const now = new Date()
-    const expires = expiryTime === 0 
-      ? new Date('9999-01-01T00:00:00.000Z')
-      : new Date(now.getTime() + expiryTime)
-
     const minRows = await db
       .select({ min: sql<number | null>`min(${emails.sortOrder})` })
       .from(emails)
-      .where(eq(emails.userId, userId!))
+      .where(and(eq(emails.userId, userId!), isNull(emails.deletedAt)))
     const sortOrder = nextSortOrder(minRows[0]?.min)
     
     const emailData: typeof emails.$inferInsert = {
@@ -121,10 +133,8 @@ export async function POST(request: Request) {
       .values(emailData)
       .returning({ id: emails.id, address: emails.address })
 
-    // 认领该地址的孤儿邮件（收信时邮箱不存在而保存的、或删邮箱时保留下来的）
-    if (await shouldClaimOrphans(env.SITE_CONFIG)) {
-      await claimOrphanMessages(db, result[0].id, address)
-    }
+    // 认领该地址的孤儿邮件（与保留开关解耦：只要有孤儿邮件就认领）
+    await claimOrphanMessages(db, result[0].id, address)
     
     return NextResponse.json({ 
       id: result[0].id,

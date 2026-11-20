@@ -3,8 +3,8 @@ import { getRequestContext } from "@cloudflare/next-on-pages"
 import { PERMISSIONS } from "@/lib/permissions"
 import { checkPermission } from "@/lib/auth"
 import { createDb, type Db } from "@/lib/db"
-import { emailShares, emails, messageShares, messages } from "@/lib/schema"
-import { detachMessagesToOrphans, isKeepMailsOnDeleteEnabled } from "@/lib/orphan-mail"
+import { emailShares, emails, messageShares, messages, users } from "@/lib/schema"
+import { detachMessagesToOrphans, getExpiredTrashDefault, isKeepMailsOnDeleteEnabled, isMailboxTrashEnabled, moveMailboxToTrash } from "@/lib/orphan-mail"
 
 export const runtime = "edge"
 
@@ -31,7 +31,8 @@ async function purgeMessages(db: Db, where: SQL | undefined): Promise<number> {
  * - orphans-all：删除全部无主（孤儿）邮件
  * - orphans-old：删除 days 天前的无主邮件（默认 30）
  * - old-messages：删除邮箱内 days 天前的邮件（默认 90，不含无主邮件）
- * - expired-mailboxes：立即删除已过期邮箱（KEEP_MAILS_ON_DELETE 开时其邮件转孤儿保留）
+ * - expired-mailboxes：立即处理已过期邮箱（回收站开启时按属主设置/站点默认决定是否软删进回收站，
+ *   不进回收站的再按 KEEP_MAILS_ON_DELETE 决定留信转孤儿或连信删除；回收站中的邮箱不在此处理）
  */
 export async function POST(request: Request) {
   const canAccess = await checkPermission(PERMISSIONS.MANAGE_CONFIG)
@@ -77,15 +78,31 @@ export async function POST(request: Request) {
 
   // expired-mailboxes
   const env = getRequestContext().env
+  const trashEnabled = await isMailboxTrashEnabled(env.SITE_CONFIG)
+  const expiredTrashDefault = trashEnabled ? await getExpiredTrashDefault(env.SITE_CONFIG) : false
   const keepMails = await isKeepMailsOnDeleteEnabled(env.SITE_CONFIG)
   const expired = await db
-    .select({ id: emails.id, address: emails.address })
+    .select({ id: emails.id, address: emails.address, expiredToTrash: users.expiredToTrash })
     .from(emails)
-    .where(lt(emails.expiresAt, new Date(now)))
+    .leftJoin(users, eq(emails.userId, users.id))
+    .where(and(lt(emails.expiresAt, new Date(now)), isNull(emails.deletedAt)))
     .limit(500)
 
   let keptMessages = 0
+  let trashedCount = 0
   for (const email of expired) {
+    // 回收站开启时逐个邮箱判定：属主个人设置优先，未设置跟随站点默认（与 cleanup Worker 同口径）
+    const toTrash = trashEnabled && (email.expiredToTrash ?? expiredTrashDefault)
+    if (toTrash) {
+      const rows = await db
+        .select({ id: messages.id })
+        .from(messages)
+        .where(eq(messages.emailId, email.id))
+      keptMessages += rows.length
+      trashedCount += 1
+      await moveMailboxToTrash(db, email)
+      continue
+    }
     if (keepMails) {
       const rows = await db
         .select({ id: messages.id })
@@ -104,6 +121,7 @@ export async function POST(request: Request) {
     success: true,
     action,
     deleted: expired.length,
-    keptMessages: keepMails ? keptMessages : 0,
+    trashed: trashedCount,
+    keptMessages: keepMails || trashedCount > 0 ? keptMessages : 0,
   })
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { messages, emails } from "@/lib/schema"
-import { and, eq } from "drizzle-orm"
+import { and, eq, isNull } from "drizzle-orm"
 import { getUserId } from "@/lib/apiKey"
 export const runtime = "edge"
 
@@ -17,7 +17,8 @@ export async function DELETE(
     const email = await db.query.emails.findFirst({
       where: and(
           eq(emails.id, id),
-          eq(emails.userId, userId!)
+          eq(emails.userId, userId!),
+          isNull(emails.deletedAt)
       )
     })
 
@@ -64,7 +65,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const email = await db.query.emails.findFirst({
       where: and(
         eq(emails.id, id),
-        eq(emails.userId, userId!)
+        eq(emails.userId, userId!),
+        isNull(emails.deletedAt)
       )
     })
 

@@ -14,6 +14,8 @@ import { useRolePermission } from "@/hooks/use-role-permission"
 import { PERMISSIONS } from "@/lib/permissions"
 import { WebsiteConfigPanel } from "./website-config-panel"
 import { MailStatsPanel } from "./mail-stats-panel"
+import { TrashPanel } from "./trash-panel"
+import { ExpiredTrashSetting } from "./expired-trash-setting"
 import { ApiKeyPanel } from "./api-key-panel"
 import { UserManagementPanel } from "./user-management-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -101,6 +103,11 @@ export function ProfileCard({ user }: ProfileCardProps) {
       content: <MailStatsPanel />,
     },
     canManageConfig && {
+      value: "trash",
+      label: tAdmin("trash"),
+      content: <TrashPanel />,
+    },
+    canManageConfig && {
       value: "mailService",
       label: tAdmin("mailService"),
       content: <EmailServiceConfig />,
@@ -181,6 +188,8 @@ export function ProfileCard({ user }: ProfileCardProps) {
           </div>
         </div>
       </div>
+
+      <ExpiredTrashSetting />
 
       {adminTabs.length > 0 && (
         <div className="space-y-4">

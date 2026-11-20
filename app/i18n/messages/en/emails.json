@@ -32,7 +32,11 @@
     "modifyExpiry": "Modify duration",
     "expiryUpdated": "Expiry updated",
     "expiryUpdateFailed": "Failed to update expiry",
-    "reorderFailed": "Failed to save order"
+    "reorderFailed": "Failed to save order",
+    "deleteDescriptionTrash": "{email} can be moved to the trash: an admin can restore it within {days} days. Or delete it permanently, which removes the mailbox and all its messages immediately and cannot be undone.",
+    "moveToTrash": "Move to Trash",
+    "permanentDelete": "Delete Permanently",
+    "trashSuccess": "Mailbox moved to trash"
   },
   "create": {
     "title": "Create Email",

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { emails } from "@/lib/schema"
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, isNull } from "drizzle-orm"
 import { isAdminAuthorized } from "@/lib/admin-access"
 import { isSpaceTargetForbidden, SPACE_TARGET_FORBIDDEN_ERROR } from "@/lib/admin-space"
 
@@ -41,7 +41,7 @@ export async function PUT(
 
   try {
     const owned = await db.query.emails.findMany({
-      where: and(eq(emails.userId, userId), inArray(emails.id, uniqueIds)),
+      where: and(eq(emails.userId, userId), inArray(emails.id, uniqueIds), isNull(emails.deletedAt)),
       columns: { id: true },
     })
     if (owned.length !== uniqueIds.length) {

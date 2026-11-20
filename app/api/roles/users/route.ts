@@ -1,6 +1,6 @@
 import { createDb } from "@/lib/db"
 import { users, userRoles, roles, emails } from "@/lib/schema"
-import { and, eq, gt, inArray, like, or, sql } from "drizzle-orm"
+import { and, eq, gt, inArray, isNull, like, or, sql } from "drizzle-orm"
 import { checkPermission } from "@/lib/auth"
 import { PERMISSIONS, ROLES } from "@/lib/permissions"
 
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       .limit(pageSize)
       .offset((page - 1) * pageSize)
 
-    // 当前页用户的未过期邮箱数（一次分组统计，避免逐用户查询）
+    // 当前页用户的未过期、未软删邮箱数（一次分组统计，避免逐用户查询）
     const pageUserIds = userList.map((u) => u.id)
     const activeCounts = new Map<string, number>()
     if (pageUserIds.length > 0) {
@@ -73,7 +73,8 @@ export async function GET(request: Request) {
         .where(
           and(
             inArray(emails.userId, pageUserIds),
-            gt(emails.expiresAt, new Date())
+            gt(emails.expiresAt, new Date()),
+            isNull(emails.deletedAt)
           )
         )
         .groupBy(emails.userId)

@@ -9,9 +9,12 @@ import {
   MAX_EMAILS_MAX,
   POLL_INTERVAL_MIN_SECONDS,
   POLL_INTERVAL_MAX_SECONDS,
+  TRASH_RETENTION_MIN_DAYS,
+  TRASH_RETENTION_MAX_DAYS,
   parseConfigBool,
   parseDefaultExpiry,
   parsePollIntervalSeconds,
+  parseTrashRetentionDays,
   parseSiteName,
   normalizeEmailDomains,
 } from "@/lib/site-config"
@@ -50,6 +53,9 @@ export async function GET() {
     pollIntervalSeconds,
     saveOrphanMails,
     keepMailsOnDelete,
+    mailboxTrashEnabled,
+    trashRetentionDays,
+    expiredTrashDefault,
     roleLimitValues
   ] = await Promise.all([
     env.SITE_CONFIG.get("DEFAULT_ROLE"),
@@ -70,6 +76,9 @@ export async function GET() {
     env.SITE_CONFIG.get("POLL_INTERVAL_SECONDS"),
     env.SITE_CONFIG.get("SAVE_ORPHAN_MAILS"),
     env.SITE_CONFIG.get("KEEP_MAILS_ON_DELETE"),
+    env.SITE_CONFIG.get("MAILBOX_TRASH_ENABLED"),
+    env.SITE_CONFIG.get("TRASH_RETENTION_DAYS"),
+    env.SITE_CONFIG.get("EXPIRED_TRASH_DEFAULT"),
     Promise.all(ROLE_LIMIT_FIELDS.map(([, key]) => env.SITE_CONFIG.get(key)))
   ])
 
@@ -89,6 +98,9 @@ export async function GET() {
     pollIntervalSeconds: parsePollIntervalSeconds(pollIntervalSeconds),
     saveOrphanMails: parseConfigBool(saveOrphanMails, SITE_CONFIG_DEFAULTS.SAVE_ORPHAN_MAILS),
     keepMailsOnDelete: parseConfigBool(keepMailsOnDelete, SITE_CONFIG_DEFAULTS.KEEP_MAILS_ON_DELETE),
+    mailboxTrashEnabled: parseConfigBool(mailboxTrashEnabled, SITE_CONFIG_DEFAULTS.MAILBOX_TRASH_ENABLED),
+    trashRetentionDays: parseTrashRetentionDays(trashRetentionDays),
+    expiredTrashDefault: parseConfigBool(expiredTrashDefault, SITE_CONFIG_DEFAULTS.EXPIRED_TRASH_DEFAULT),
     roleLimits: Object.fromEntries(
       ROLE_LIMIT_FIELDS.map(([field], index) => [field, roleLimitValues[index] || ""])
     ) as Record<RoleLimitField, string>,
@@ -116,6 +128,9 @@ interface ConfigPostBody {
   pollIntervalSeconds?: number
   saveOrphanMails?: boolean
   keepMailsOnDelete?: boolean
+  mailboxTrashEnabled?: boolean
+  trashRetentionDays?: number
+  expiredTrashDefault?: boolean
   roleLimits?: Partial<Record<RoleLimitField, string>>
   turnstile?: {
     enabled: boolean
@@ -174,6 +189,8 @@ export async function POST(request: Request) {
     ["allowPermanentEmail", "ALLOW_PERMANENT_EMAIL"],
     ["saveOrphanMails", "SAVE_ORPHAN_MAILS"],
     ["keepMailsOnDelete", "KEEP_MAILS_ON_DELETE"],
+    ["mailboxTrashEnabled", "MAILBOX_TRASH_ENABLED"],
+    ["expiredTrashDefault", "EXPIRED_TRASH_DEFAULT"],
   ]
   for (const [field] of boolFields) {
     if (body[field] !== undefined && typeof body[field] !== "boolean") {
@@ -204,6 +221,16 @@ export async function POST(request: Request) {
       body.pollIntervalSeconds > POLL_INTERVAL_MAX_SECONDS
     ) {
       return Response.json({ error: `轮询间隔必须是 ${POLL_INTERVAL_MIN_SECONDS}–${POLL_INTERVAL_MAX_SECONDS} 的整数秒` }, { status: 400 })
+    }
+  }
+
+  if (body.trashRetentionDays !== undefined) {
+    if (
+      !Number.isInteger(body.trashRetentionDays) ||
+      body.trashRetentionDays < TRASH_RETENTION_MIN_DAYS ||
+      body.trashRetentionDays > TRASH_RETENTION_MAX_DAYS
+    ) {
+      return Response.json({ error: `回收站保留天数必须是 ${TRASH_RETENTION_MIN_DAYS}–${TRASH_RETENTION_MAX_DAYS} 的整数` }, { status: 400 })
     }
   }
 
@@ -260,6 +287,9 @@ export async function POST(request: Request) {
   }
   if (body.pollIntervalSeconds !== undefined) {
     puts.push(env.SITE_CONFIG.put("POLL_INTERVAL_SECONDS", body.pollIntervalSeconds.toString()))
+  }
+  if (body.trashRetentionDays !== undefined) {
+    puts.push(env.SITE_CONFIG.put("TRASH_RETENTION_DAYS", body.trashRetentionDays.toString()))
   }
   if (body.roleLimits !== undefined) {
     for (const [field, key] of ROLE_LIMIT_FIELDS) {

@@ -104,3 +104,121 @@ GET /api/config 的解析侧同样防御：存量 KV 中若有非法值（如手
   - 过程中曾出现 `scripts/deploy/*.ts` 找不到 `cloudflare` 模块的 2 条报错，经基线对比确认是依赖未装完时的假象，完整安装后基线与改动后均消失。
 - `npm run build`（在代码副本上执行，避免在工作区留下 `.next` 产物）：**exit=0，构建成功**；仅有上游既有的 ESLint 警告（react-hooks/exhaustive-deps、`<img>` 建议等），无新增报错、无 i18n 缺键报错。
 - 未运行任何 deploy 脚本，未 push，未触碰线上实例。
+
+---
+
+# 六期：邮箱回收站（软删除 + 管理员可恢复）
+
+在四期孤儿邮件机制之上，把「删除邮箱」从不可恢复的硬删升级为可进回收站的软删，并把到期处理改为站点/用户两级可控。全部新行为由站点开关 `MAILBOX_TRASH_ENABLED`（默认关）总控：**开关关闭、且 KV 无任何新键时，所有行为与五期完全一致**。本次未部署、未 push、未触碰线上实例与任何线上 KV/D1，未改 wrangler 配置。
+
+## 设计口径
+
+- 软删 = 给 email 行打 `deleted_at` 时间戳；邮件保持挂载不动（不转孤儿）；软删时先清该邮箱的 `email_share` 与其邮件的 `message_share`，保证回收站期间一切分享链接失效。
+- 回收站中的邮箱对全站读路径不可见（按不存在处理）；管理员可在个人中心「回收站」标签页恢复（清 `deleted_at`，有效期原样）或彻底删除。
+- 保留期 `TRASH_RETENTION_DAYS`（默认 30 天）同时管两类清仓：回收站邮箱超期硬删、孤儿邮件超期删除（后者与回收站开关无关、始终执行）。
+
+## 新增配置
+
+| KV 键 | 类型 | 默认值 | API 字段 | 说明 |
+| --- | --- | --- | --- | --- |
+| `MAILBOX_TRASH_ENABLED` | `"true"`/`"false"` | `false` | `mailboxTrashEnabled` | 回收站总开关 |
+| `TRASH_RETENTION_DAYS` | string（天数） | `30` | `trashRetentionDays`（number） | 软删邮箱与孤儿邮件的保留天数，解析范围 1–3650，非法回退 30 |
+| `EXPIRED_TRASH_DEFAULT` | `"true"`/`"false"` | `false` | `expiredTrashDefault` | 到期进回收站的站点默认（用户个人设置为空时跟随） |
+
+接线：`app/lib/site-config.ts`（默认值、`parseTrashRetentionDays`）、`app/lib/orphan-mail.ts`（`isMailboxTrashEnabled` / `getTrashRetentionDays` / `getExpiredTrashDefault`，与孤儿同域）、`app/api/config/route.ts`（GET/POST，POST 校验口径同既有字段：布尔必须为 boolean、天数必须 1–3650 整数、缺失不覆盖）、`app/hooks/use-config.ts`（同口径兜底解析）、网站配置面板邮箱策略区（回收站开关 Switch + 保留天数数字输入 + 到期默认 Switch，与两个孤儿开关并列）。
+
+## 迁移 0022（drizzle/0022_mailbox_trash.sql）
+
+drizzle-kit generate 生成后已人工核对，全文只有三条语句，无重建表：
+
+```sql
+ALTER TABLE `email` ADD `deleted_at` integer;
+CREATE INDEX `email_deleted_at_idx` ON `email` (`deleted_at`);
+ALTER TABLE `user` ADD `expired_to_trash` integer;
+```
+
+- `email.deleted_at`：timestamp_ms 可空，NULL = 未软删；schema 中同步加 `deletedAt` 列与索引。
+- `user.expired_to_trash`：布尔可空，NULL = 跟随站点默认 `EXPIRED_TRASH_DEFAULT`。
+
+## 软删除接线（删除路径）
+
+- 本人删除 `app/api/emails/[id]/route.ts` DELETE：回收站开启时走软删（追加设计 A 的二选一见下）；关闭时五期 KEEP/硬删逻辑一字未动。
+- 管理员空间删除 `app/api/admin/space/[userId]/emails/[emailId]/route.ts` DELETE：回收站开启时软删，不给选择；关闭时原逻辑不动。
+- 两处删除的邮箱查找都只匹配未软删行（已软删再删 → 走不存在分支：本人 403、空间 404）。
+- 软删/彻删的公共实现在 `app/lib/orphan-mail.ts`：`moveMailboxToTrash(db, email)`（清 shares + 打标记）、`purgeMailbox(db, emailId)`（清 shares → 删 messages → 删 email 行的硬删版）。
+
+## 读路径统一排除软删邮箱（查询点清单）
+
+以下每一处都加了 `deleted_at IS NULL` 过滤（或等价的软删检查）：
+
+- `app/api/emails/route.ts` GET：用户邮箱列表的计数与分页查询基条件。
+- `app/api/emails/[id]/route.ts`：GET 消息列表、PATCH 改有效期、DELETE 的三处 `findFirst`。
+- `app/api/emails/[id]/` 下子路由：`[messageId]/route.ts`（消息详情/删除两处）、`send/route.ts`（发信邮箱查找）、`share/route.ts` 与 `share/[shareId]/route.ts`（邮箱分享）、`messages/[messageId]/share/route.ts` 与 `messages/[messageId]/share/[shareId]/route.ts`（邮件分享）。
+- `app/api/emails/reorder/route.ts` 与 `app/api/admin/space/[userId]/emails/reorder/route.ts`：归属校验 `findMany`。
+- `app/lib/email-limit.ts` `countActiveEmails`：配额计数不含软删邮箱。
+- `app/lib/admin-space.ts` `loadOwnedEmail`：管理员空间的邮箱详情、改有效期、删箱、消息列表/详情全部经此加载，一并排除。
+- `app/api/admin/space/[userId]/route.ts` GET：空间邮箱列表与消息数分组统计。
+- `app/lib/shared-data.ts`：`getSharedEmail` / `getSharedEmailMessages` 对软删邮箱返回空（软删时分享记录已清，此为双保险）；`getSharedMessage` 的邮箱查找排除软删。
+- `workers/email-receiver.ts`：按地址查目标邮箱排除软删——软删 = 不存在，走原不存在分支（按 SAVE_ORPHAN_MAILS 存孤儿或丢弃）。
+- `workers/cleanup.ts` 与 `app/api/admin/mail-cleanup/route.ts`：过期邮箱选取排除软删（回收站邮箱归清仓规则，不重复走过期处理）。
+- `app/api/admin/mail-stats/route.ts`：邮箱总数与已过期数不含软删邮箱。
+- `app/api/roles/users/route.ts`：用户管理列表的未过期邮箱计数不含软删邮箱。
+- 两处建箱的排序号 `min(sortOrder)` 查询排除软删行，避免与恢复后的邮箱排序号冲突。
+- 经查未改：`app/lib/send-permissions.ts` 的每日发信计数统计的是历史已发邮件（事实计数、与邮箱可见性无关）；`app/api/users/[id]/route.ts` 删用户走外键级联（账号级硬删，回收站不介入）。
+
+## 建箱恢复与认领解耦
+
+- 两处建箱（`app/api/emails/generate/route.ts`、管理员空间 POST）在创建前按 `LOWER(address)` 查已有行：
+  - 未软删存在 → 原 409「该邮箱地址已被使用」；
+  - 软删且属于同一用户（空间路径为目标用户）→ 恢复它：清 `deleted_at`、按本次请求的有效期更新 `expiresAt`，随后认领孤儿并按原响应格式返回该邮箱；
+  - 软删但属于他人 → 409。
+- 认领解耦：两处建箱成功后**无条件**调用 `claimOrphanMessages`，不再受 SAVE/KEEP 任一开关门控；`shouldClaimOrphans` 已无调用方，一并移除。
+
+## 回收站 API 与面板
+
+- `GET /api/admin/trash`：全部软删邮箱（id、address、userId、属主显示名、deletedAt、createdAt、expiresAt、挂载邮件数），按 deletedAt 倒序；权限守卫同 mail-stats（`PERMISSIONS.MANAGE_CONFIG`）。
+- `POST /api/admin/trash/[emailId]/restore`：仅对软删中的邮箱恢复（清 `deleted_at`，有效期原样，哪怕已过期）；非软删/不存在返回 404。
+- `DELETE /api/admin/trash/[emailId]`：仅对软删中的邮箱彻底删除（走 `purgeMailbox`）；非软删/不存在返回 404。
+- 面板：个人中心管理标签页在「邮件统计」旁新增「回收站」标签页（新组件 `app/components/profile/trash-panel.tsx`，模式照邮件统计面板）：列表行含地址、属主、删除时间、邮件数与「恢复」「彻底删除」按钮，彻删走 AlertDialog 二次确认（含地址与邮件数、不可恢复提示），含空状态与刷新。
+
+## cleanup 清仓与到期规则（workers/cleanup.ts）
+
+每次运行依次执行（保留期均取 `TRASH_RETENTION_DAYS`）：
+
+1. **过期邮箱**（选取排除已软删）：
+   - 回收站关闭 → 五期逻辑原样（KEEP 开 = 信转孤儿删箱；关 = 连信硬删）。
+   - 回收站开启 → 逐个邮箱三层判定（追加设计 B）：属主 `user.expired_to_trash` 非 NULL 用其值，NULL 用站点默认 `EXPIRED_TRASH_DEFAULT`；为真 → 软删（清 shares、置 deleted_at）；为假 → 回到五期 KEEP 分支。注：此分支下「不进回收站且 KEEP 关」的硬删改为逐行显式清 shares/messages 后删邮箱（与应用层口径一致，不再单靠外键级联），结果等价。
+2. **回收站清仓**（仅回收站开启时）：`deleted_at` 早于保留期的邮箱硬删（清 shares → messages → email，单批 100）。
+3. **孤儿清仓**（始终执行，不受回收站开关约束）：`emailId IS NULL` 且 `received_at` 早于保留期的邮件删除（连带其 message_share，单批 500）。
+- `app/api/admin/mail-cleanup/route.ts` 的 `expired-mailboxes` 手动动作与 Worker 同步同口径（排除软删、三层判定），响应新增 `trashed` 计数字段。
+
+## 追加设计 A：用户自删二选一
+
+- 本人 DELETE 在回收站开启时接受查询参数 `toTrash`：未传或 `true` → 移入回收站；`false` → 本人明确彻底删除——不清孤儿、不走 KEEP 分支，邮箱与邮件一并硬删（走 `purgeMailbox`，shares 先清）。未传参数默认进回收站，旧前端调用行为兼容。
+- 前端确认框（`app/components/emails/email-list.tsx`）随之二选一：回收站开启时文案提示「移入回收站（{天数} 天内可联系管理员恢复）/ 彻底删除（不可恢复）」并给出两个动作按钮（推荐前者、后者为危险样式）；关闭时保持原单按钮确认与原文案。
+- 管理员空间删除不给选择：开关开即软删。
+
+## 追加设计 B：到期进回收站的用户级设置
+
+- 数据：`user.expired_to_trash`（迁移 0022，NULL = 跟随站点默认）。
+- 站点默认：KV `EXPIRED_TRASH_DEFAULT`（默认 false），配置面板文案为「到期进回收站（站点默认，用户可在个人中心覆盖）」。
+- 个人中心：新增用户级开关卡片（新组件 `app/components/profile/expired-trash-setting.tsx`，挂在个人信息卡下方，对所有登录用户可见；仅站点回收站开启时展示，因为关闭时该设置无实际作用）：展示值 = 个人设置 ?? 站点默认，并注明当前是「跟随站点默认」还是「已单独设置」，已单独设置时可一键恢复跟随默认；切换即保存。
+- 保存接口：新增 `POST` 同风格的用户设置接口 `GET/PATCH /api/users/me/settings`（会话鉴权、只能改本人；PATCH 只接受 `expiredToTrash` 为布尔或 null，null = 恢复跟随默认）。
+- cleanup 与 mail-cleanup 的到期判定顺序见上文三层判定。
+
+## 追加设计 C：顶栏「返回邮箱」按钮
+
+- `app/components/auth/sign-button.tsx`（顶栏与首页共用）：已登录状态下在登出按钮左侧新增「返回邮箱」按钮，去向与个人中心底部既有按钮相同（`/{locale}/moe`），文案复用现成 i18n 键 `common.nav.backToMailbox`（五语种均已有正式译文，未新增键）；当前路由已是邮箱主页（`/{locale}/moe`）时不显示。
+
+## i18n
+
+- `profile.json` 五语种新增：`website.{mailboxTrashEnabled(+Description), trashRetentionDays(+Description), expiredTrashDefault(+Description)}`、`adminTabs.trash`、整段 `trash.*`（回收站面板）、整段 `expiredTrash.*`（个人到期设置）。
+- `emails.json` 五语种 `list` 段新增：`deleteDescriptionTrash`、`moveToTrash`、`permanentDelete`、`trashSuccess`。
+- zh-CN / en / zh-TW 为正式译文，ja / ko 按惯例英文占位；已用脚本校验五语种键完整且无旧键丢失。
+
+## 验证结果（2026-11-20 实测）
+
+- `npx tsc --noEmit` **exit=0，零错误**。
+- `npm run build` **exit=0，构建成功**；路由表含新增 `/api/admin/trash`、`/api/admin/trash/[emailId]`、`/api/admin/trash/[emailId]/restore`、`/api/users/me/settings`；仅有上游既有的 ESLint 警告（react-hooks/exhaustive-deps 等），无新增报错、无 i18n 缺键报错。
+- 未运行任何 deploy 脚本，未 push，未触碰线上实例。
+

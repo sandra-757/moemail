@@ -32,7 +32,11 @@
     "modifyExpiry": "修改時效",
     "expiryUpdated": "有效期已更新",
     "expiryUpdateFailed": "修改有效期失敗",
-    "reorderFailed": "排序儲存失敗"
+    "reorderFailed": "排序儲存失敗",
+    "deleteDescriptionTrash": "信箱 {email} 可以移入回收筒：移入後 {days} 天內可聯絡管理員還原；也可以選擇徹底刪除，信箱與其中所有郵件將立即刪除且無法復原。",
+    "moveToTrash": "移入回收筒",
+    "permanentDelete": "徹底刪除",
+    "trashSuccess": "信箱已移入回收筒"
   },
   "create": {
     "title": "建立郵箱",

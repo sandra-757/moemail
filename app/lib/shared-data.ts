@@ -38,6 +38,11 @@ export async function getSharedEmail(token: string): Promise<SharedEmail | null>
       return null
     }
 
+    // 邮箱已软删（进回收站）时分享失效（软删时分享记录已清除，这里是双保险）
+    if (share.email.deletedAt) {
+      return null
+    }
+
     // 检查分享是否过期
     if (share.expiresAt && share.expiresAt < new Date()) {
       return null
@@ -78,6 +83,11 @@ export async function getSharedEmailMessages(token: string, limit = 20): Promise
     })
 
     if (!share) {
+      return { messages: [], nextCursor: null, total: 0 }
+    }
+
+    // 邮箱已软删（进回收站）时分享失效（软删时分享记录已清除，这里是双保险）
+    if (share.email.deletedAt) {
       return { messages: [], nextCursor: null, total: 0 }
     }
 
@@ -167,10 +177,11 @@ export async function getSharedMessage(token: string): Promise<SharedMessage | n
       return null
     }
 
-    // 获取邮箱信息（孤儿邮件没有归属邮箱；其分享在转孤儿时已清除，正常不会走到这里）
+    // 获取邮箱信息（孤儿邮件没有归属邮箱；其分享在转孤儿时已清除，正常不会走到这里；
+    // 软删邮箱同样按无归属处理，其邮件分享在软删时已清除）
     const email = message.emailId
       ? await db.query.emails.findFirst({
-          where: eq(emails.id, message.emailId)
+          where: and(eq(emails.id, message.emailId), isNull(emails.deletedAt))
         })
       : undefined
 
