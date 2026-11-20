@@ -224,3 +224,4 @@ ALTER TABLE `user` ADD `expired_to_trash` integer;
 
 
 > 部署修复（2026-11-20，六期上线时）：六期构建产物将 Node 内置模块 async_hooks 打入中间件包，Pages 运行时 compatibility_date=2024-03-20 下无法提供该模块，导致整站 500（本地 wrangler pages dev 复现确认）。已将 wrangler.json（Pages）的 compatibility_date 提升至 2025-01-01（保留 nodejs_compat），重新部署后恢复。后续部署勿把该日期改回。
+> 部署修复二（2026-11-20）：compatibility_date 提升后 Auth.js 改走 async_hooks 请求上下文路径，配置未显式 trustHost 导致 /api/auth/* 全部 500（UntrustedHost，登录不可用）。已在 app/lib/auth.ts 的 NextAuth 配置中显式设置 trustHost: true（自托管标准写法），本地以生产同等兼容参数验证 csrf/session 均 200。

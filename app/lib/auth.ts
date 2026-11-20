@@ -95,6 +95,9 @@ export const {
   signOut
 } = NextAuth(() => ({
   secret: process.env.AUTH_SECRET,
+  // 自托管于 Cloudflare Pages（非 Vercel）：显式信任平台转发的 Host，
+  // 否则 compatibility_date ≥ 2025 后 Auth.js 走 async_hooks 上下文路径会抛 UntrustedHost，/api/auth/* 全 500
+  trustHost: true,
   adapter: DrizzleAdapter(createDb(), {
     usersTable: users,
     accountsTable: accounts,
