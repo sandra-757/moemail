@@ -1,25 +1,32 @@
 name: Deploy
 
+# 双实例部署：同一份代码部署到两个 Cloudflare 账号的 MoeMail 实例。
+# - legacy：旧账号（主用实例 moemail.weiuqi.xx.kg）
+# - new：新账号（实例 moemail.mrin.de5.net）
+# 两个 job 都只传 CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID，故意不传任何
+# AUTH_*：部署脚本在 .env 里找不到运行时密钥时会跳过密钥推送，两个实例现有的
+# Pages 密钥（AUTH_SECRET、GitHub OAuth 等）保持原样不被覆盖。
+# 资源按名称在各自账号内查找并复用（moemail / moemail-db / moemail-kv），
+# 数据库迁移只补跑未应用的增量。
+
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
+    inputs:
+      target:
+        description: "部署目标"
+        type: choice
+        options:
+          - legacy
+          - new
+          - both
+        default: legacy
 
 jobs:
-  deploy:
+  deploy-legacy:
+    if: ${{ inputs.target == 'legacy' || inputs.target == 'both' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Get full git history for checking file changes
-
-      - name: Get previous tag
-        id: previoustag
-        if: github.event_name == 'push'
-        run: |
-          echo "tag=$(git describe --tags --abbrev=0 HEAD^)" >> $GITHUB_OUTPUT
-        continue-on-error: true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
@@ -35,25 +42,46 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run deploy script
+      - name: Run deploy script (legacy account)
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
-          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
-          DATABASE_ID: ${{ secrets.DATABASE_ID }}
-          KV_NAMESPACE_NAME: ${{ secrets.KV_NAMESPACE_NAME }}
-          KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
-          CUSTOM_DOMAIN: ${{ secrets.CUSTOM_DOMAIN }}
-          AUTH_GITHUB_ID: ${{ secrets.AUTH_GITHUB_ID }}
-          AUTH_GITHUB_SECRET: ${{ secrets.AUTH_GITHUB_SECRET }}
-          AUTH_GOOGLE_ID: ${{ secrets.AUTH_GOOGLE_ID }}
-          AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.LEGACY_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.LEGACY_CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm dlx tsx scripts/deploy/index.ts
 
-      # Clean up
       - name: Post deployment cleanup
         run: |
           rm -f .env*.*
           rm -f wrangler*.json
+        if: always()
+
+  deploy-new:
+    if: ${{ inputs.target == 'new' || inputs.target == 'both' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run deploy script (new account)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.NEW_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.NEW_CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm dlx tsx scripts/deploy/index.ts
+
+      - name: Post deployment cleanup
+        run: |
+          rm -f .env*.*
+          rm -f wrangler*.json
+        if: always()
