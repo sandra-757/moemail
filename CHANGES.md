@@ -248,3 +248,5 @@ ALTER TABLE `user` ADD `expired_to_trash` integer;
 - `npm run build`（家目录下的构建副本，避免 /tmp 512MB tmpfs 爆满与工作区留 `.next` 产物；构建前清过一次误拷的顶层 `components/` 副本，已删净）**exit=0，构建成功**；路由表含新增 `ƒ /api/search`；无新增 ESLint 报错、无 i18n 缺键报错。
 - 真实 lib 函数经 `tsx` 实测：`likePattern("a%b_c\\d")` 转义正确、`makeSnippet` 在 HTML 正文里命中 "123456" 前后取段且去标签、超长 q 截断 100 字符、非法 sort 回退默认、地址游标 `encode/decode` 往返一致。
 - 未做线上实测（无可用发信通道做端到端搜索验收，D1 LIKE 语义与现有 `roles/users` 的 `like()` 用法一致）；未 push，未部署——**注意：`feat/admin-config-v1` 分支 push 会触发 CI 自动双实例部署**，部署需用户确认后执行。
+
+> 修复（2026-11-25，八期部署后线上实测发现）：上线后 `GET /api/emails?q=…` 与带 q 的邮件搜索全部 500。根因在 `app/lib/search.ts` 的 `likeColumn`：模板字面量里写的 `ESCAPE '\'`，JS 把 `\'` 当成转义单引号、反斜杠被吃掉，实际发到 D1 的 SQL 是 `ESCAPE ''`（空串），SQLite 报错 "ESCAPE expression must be a single character"。此前 tsx 只测了 `likePattern` 的返回值、没跑真查询，所以没抓到。修复：转义符改用 `!`（`escapeLikeValue` 改为 `!`→`!!`、`%`→`!%`、`_`→`!_`，SQL 用 `ESCAPE '!'`，模板里再无反斜杠）；根因与教训已写进 `search.ts` 顶部注释。复核用临时脚本（drizzle sqlite-proxy + node:sqlite 内存库，已删）跑真查询：`q=mrin` 命中 2 条、地址排序/时间排序均正常、`a%b` 按字面命中含 `%` 的地址、`zzz` 无结果 0 条；`tsc` 与 `npm run build` 均通过。修复提交后重新部署双实例并线上复验。

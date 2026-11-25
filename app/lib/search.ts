@@ -6,8 +6,11 @@ import { sql, type SQL, type AnyColumn } from "drizzle-orm"
  * 约定：
  * - q 为空 / 超长截断后为空 = 不过滤；前端只在 q >= 2 字符时才调全局搜索，
  *   列表内搜索允许 1 字符（邮箱地址前缀很短时也有用）。
- * - LIKE 通配符 %, _ 与转义符 \ 一律转义，查询走 `LIKE ... ESCAPE '\'`，
+ * - LIKE 通配符 %, _ 与转义符 ! 一律转义，查询走 `LIKE ... ESCAPE '!'`，
  *   用户输入的 % 不会变成通配符。
+ *   注意：转义符不用反斜杠——模板字面量里的 `\'` 会被 JS 当成转义单引号
+ *   吃掉反斜杠，导致实际 SQL 变成 `ESCAPE ''`，D1 报错
+ *   "ESCAPE expression must be a single character"（2026-11-25 部署后实测）。
  * - 排序参数非法时回退默认值，绝不 400（列表页 URL 手改也不应炸页）。
  */
 
@@ -19,9 +22,9 @@ export function parseSearchQuery(raw: string | null | undefined): string | null 
   return q.length > 0 ? q : null
 }
 
-/** 把用户输入转义为 LIKE 安全的子串（不含两侧 %）。 */
+/** 把用户输入转义为 LIKE 安全的子串（不含两侧 %）。转义符为 !。 */
 export function escapeLikeValue(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")
+  return value.replace(/!/g, "!!").replace(/%/g, "!%").replace(/_/g, "!_")
 }
 
 export function likePattern(query: string): string {
@@ -33,7 +36,7 @@ export function likePattern(query: string): string {
  * 再包一层 LOWER 以覆盖带大小写的地址/主题比较。
  */
 export function likeColumn(column: AnyColumn, query: string): SQL {
-  return sql`LOWER(${column}) LIKE LOWER(${likePattern(query)}) ESCAPE '\'`
+  return sql`LOWER(${column}) LIKE LOWER(${likePattern(query)}) ESCAPE '!'`
 }
 
 /** 邮箱列表排序模式：custom = 现有手动拖拽顺序（默认）。 */
