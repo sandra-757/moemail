@@ -6,7 +6,8 @@
     "ok": "確定",
     "cancel": "取消",
     "save": "儲存",
-    "delete": "刪除"
+    "delete": "刪除",
+    "clear": "清除"
   },
   "nav": {
     "home": "首頁",

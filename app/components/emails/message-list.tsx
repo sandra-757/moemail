@@ -2,10 +2,20 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
-import {Mail, Calendar, RefreshCw, Trash2, Share2} from "lucide-react"
+import {Mail, Calendar, RefreshCw, Search, Trash2, Share2, X} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useThrottle } from "@/hooks/use-throttle"
+import { useDebounce } from "@/hooks/use-debounce"
+import { MESSAGE_SORTS, type MessageSort } from "@/lib/search"
 import { EMAIL_CONFIG } from "@/config"
 import { useConfig } from "@/hooks/use-config"
 import { useToast } from "@/components/ui/use-toast"
@@ -62,6 +72,23 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
   const messagesRef = useRef<Message[]>([]) // 添加 ref 来追踪最新的消息列表
   const [total, setTotal] = useState(0)
   const [messageToDelete, setMessageToDelete] = useState<Message | null>(null)
+  // 搜索 + 排序：输入防抖 300ms 后才请求；搜索期间暂停轮询，避免新邮件冲掉搜索结果
+  const [searchInput, setSearchInput] = useState("")
+  const [sort, setSort] = useState<MessageSort>("date_desc")
+  const debouncedSearch = useDebounce(searchInput.trim(), 300)
+  const searchRef = useRef(debouncedSearch)
+  searchRef.current = debouncedSearch
+  const sortRef = useRef(sort)
+  sortRef.current = sort
+  const isSearching = debouncedSearch.length > 0
+  const sortLabels: Record<MessageSort, string> = {
+    date_desc: t("sortDateDesc"),
+    date_asc: t("sortDateAsc"),
+    subject_asc: t("sortSubjectAsc"),
+    subject_desc: t("sortSubjectDesc"),
+    from_asc: t("sortFromAsc"),
+    from_desc: t("sortFromDesc"),
+  }
   const { toast } = useToast()
   const { config } = useConfig()
   // 轮询间隔：优先用管理员配置（秒），配置未加载时回退 EMAIL_CONFIG.POLL_INTERVAL（毫秒）
@@ -74,7 +101,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
     messagesRef.current = messages
   }, [messages])
 
-  const fetchMessages = async (cursor?: string) => {
+  const fetchMessages = async (cursor?: string, reset = false) => {
     try {
       const url = new URL(`/api/emails/${email.id}`, window.location.origin)
       if (messageType === 'sent') {
@@ -83,10 +110,18 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }
+      if (searchRef.current) url.searchParams.set('q', searchRef.current)
+      url.searchParams.set('sort', sortRef.current)
       const response = await fetch(url)
       const data = await response.json() as MessageResponse
-      
+
       if (!cursor) {
+        if (reset) {
+          setMessages(data.messages)
+          setNextCursor(data.nextCursor)
+          setTotal(data.total)
+          return
+        }
         const newMessages = data.messages
         const oldMessages = messagesRef.current
 
@@ -119,6 +154,8 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
 
   const startPolling = () => {
     stopPolling()
+    // 搜索中不轮询：轮询的合并逻辑会把新邮件插到搜索结果前，冲掉当前搜索视图
+    if (searchRef.current) return
     pollTimeoutRef.current = setInterval(() => {
       if (!refreshing && !loadingMore) {
         fetchMessages()
@@ -135,7 +172,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchMessages()
+    await fetchMessages(undefined, true)
   }
 
   const handleScroll = useThrottle((e: React.UIEvent<HTMLDivElement>) => {
@@ -189,20 +226,21 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
     }
   }
 
+  // 邮箱 / 收发 Tab / 搜索词 / 排序变化时从头拉取（旧游标与当前 q/sort 不匹配）
   useEffect(() => {
     if (!email.id) {
       return
     }
     setLoading(true)
     setNextCursor(null)
-    fetchMessages()
-    startPolling() 
+    fetchMessages(undefined, true)
+    startPolling()
 
     return () => {
-      stopPolling() 
+      stopPolling()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email.id])
+  }, [email.id, messageType, debouncedSearch, sort])
 
   // 配置加载/变更导致轮询间隔变化时，重启轮询以应用新间隔
   const appliedPollIntervalRef = useRef<number>(EMAIL_CONFIG.POLL_INTERVAL)
@@ -238,6 +276,39 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
         <span className="text-xs text-gray-500">
           {total > 0 ? `${total} ${t("messageCount")}` : t("noMessages")}
         </span>
+      </div>
+      <div className="p-2 flex gap-2 border-b border-primary/20">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="pl-8 pr-8 h-8"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              aria-label={tCommon("clear")}
+              onClick={() => setSearchInput("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <Select value={sort} onValueChange={(value) => setSort(value as MessageSort)}>
+          <SelectTrigger className="h-8 w-[132px] shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MESSAGE_SORTS.map((value) => (
+              <SelectItem key={value} value={value}>
+                {sortLabels[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex-1 overflow-auto" onScroll={handleScroll}>
@@ -306,7 +377,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
           </div>
         ) : (
           <div className="p-4 text-center text-sm text-gray-500">
-            {t("noMessages")}
+            {isSearching ? t("searchNoResults") : t("noMessages")}
           </div>
         )}
       </div>

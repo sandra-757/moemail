@@ -36,7 +36,16 @@
     "deleteDescriptionTrash": "信箱 {email} 可以移入回收筒：移入後 {days} 天內可聯絡管理員還原；也可以選擇徹底刪除，信箱與其中所有郵件將立即刪除且無法復原。",
     "moveToTrash": "移入回收筒",
     "permanentDelete": "徹底刪除",
-    "trashSuccess": "信箱已移入回收筒"
+    "trashSuccess": "信箱已移入回收筒",
+    "searchPlaceholder": "搜尋信箱地址…",
+    "searchNoResults": "沒有找到相符的信箱",
+    "sortCustom": "自訂排序",
+    "sortCreatedDesc": "建立時間：最新在前",
+    "sortCreatedAsc": "建立時間：最早在前",
+    "sortExpiresAsc": "過期時間：最近到期在前",
+    "sortExpiresDesc": "過期時間：最晚到期在前",
+    "sortAddressAsc": "地址：A → Z",
+    "sortAddressDesc": "地址：Z → A"
   },
   "create": {
     "title": "建立郵箱",
@@ -64,7 +73,23 @@
     "subject": "主旨",
     "date": "日期",
     "loading": "載入中...",
-    "loadingMore": "載入更多..."
+    "loadingMore": "載入更多...",
+    "searchPlaceholder": "搜尋主旨、寄件人、內容…",
+    "searchNoResults": "沒有找到相符的郵件",
+    "sortDateDesc": "時間：最新在前",
+    "sortDateAsc": "時間：最早在前",
+    "sortSubjectAsc": "主旨：A → Z",
+    "sortSubjectDesc": "主旨：Z → A",
+    "sortFromAsc": "寄件人：A → Z",
+    "sortFromDesc": "寄件人：Z → A"
+  },
+  "search": {
+    "placeholder": "全域搜尋信箱和郵件…",
+    "loading": "搜尋中…",
+    "noResults": "沒有找到相符的結果",
+    "emails": "信箱",
+    "messages": "郵件",
+    "clear": "清除搜尋"
   },
   "send": {
     "title": "發送郵件",

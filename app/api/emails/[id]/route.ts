@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { createDb } from "@/lib/db"
 import { emails, messages } from "@/lib/schema"
-import { eq, and, lt, or, sql, ne, isNull } from "drizzle-orm"
+import { eq, and, gt, lt, or, sql, ne, isNull } from "drizzle-orm"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
+import { likeColumn, parseMessageSort, parseSearchQuery } from "@/lib/search"
 import { getUserId } from "@/lib/apiKey"
 import { checkBasicSendPermission } from "@/lib/send-permissions"
 import { getRequestContext } from "@cloudflare/next-on-pages"
@@ -122,6 +123,13 @@ export async function PATCH(
 
 const PAGE_SIZE = 20
 
+/**
+ * GET /api/emails/[id]?cursor=&type=&q=&sort=
+ * - q：在本邮箱内按主题 / 发件人 / 收件人 / 正文子串搜索（大小写不敏感）。
+ * - sort：date_desc（默认，最新在前）| date_asc | subject_asc | subject_desc
+ *   | from_asc | from_desc（已发送按收件人排，未发送按发件人排）。
+ *   游标与排序模式绑定，换 q / sort / type 后旧游标失效，前端须从头拉取。
+ */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -129,6 +137,8 @@ export async function GET(
   const { searchParams } = new URL(request.url)
   const cursorStr = searchParams.get('cursor')
   const messageType = searchParams.get('type')
+  const query = parseSearchQuery(searchParams.get('q'))
+  const sort = parseMessageSort(searchParams.get('sort'))
 
   try {
     const db = createDb()
@@ -160,14 +170,27 @@ export async function GET(
       )
     }
 
+    const typeCondition = messageType === 'sent'
+      ? eq(messages.type, "sent")
+      : or(
+          ne(messages.type, "sent"),
+          isNull(messages.type)
+        )
+    // 发件人排序列：已发送按收件人、收件按发件人（与列表展示的地址一致）
+    const fromColumn = messageType === 'sent' ? messages.toAddress : messages.fromAddress
+    const orderByTime = messageType === 'sent' ? messages.sentAt : messages.receivedAt
+
     const baseConditions = and(
       eq(messages.emailId, id),
-      messageType === 'sent' 
-        ? eq(messages.type, "sent") 
-        : or(
-            ne(messages.type, "sent"),
-            isNull(messages.type)
-          )
+      typeCondition,
+      ...(query
+        ? [or(
+            likeColumn(messages.subject, query),
+            likeColumn(messages.fromAddress, query),
+            likeColumn(messages.toAddress, query),
+            likeColumn(messages.content, query)
+          )]
+        : [])
     )
 
     const totalResult = await db.select({ count: sql<number>`count(*)` })
@@ -178,38 +201,83 @@ export async function GET(
     const conditions = [baseConditions]
 
     if (cursorStr) {
-      const { timestamp, id } = decodeCursor(cursorStr)
-      const orderByTime = messageType === 'sent' ? messages.sentAt : messages.receivedAt
-      conditions.push(
-        or(
-          lt(orderByTime, new Date(timestamp)),
-          and(
-            eq(orderByTime, new Date(timestamp)),
-            lt(messages.id, id)
+      const { timestamp, id: cursorId, key } = decodeCursor(cursorStr)
+      const ts = new Date(timestamp)
+      if (sort === "date_asc") {
+        conditions.push(
+          or(
+            gt(orderByTime, ts),
+            and(eq(orderByTime, ts), gt(messages.id, cursorId))
           )
         )
-      )
+      } else if (sort === "subject_asc" || sort === "from_asc") {
+        const col = sort === "subject_asc" ? messages.subject : fromColumn
+        if (key !== undefined) {
+          conditions.push(
+            or(
+              gt(col, key),
+              and(eq(col, key), gt(messages.id, cursorId))
+            )
+          )
+        }
+      } else if (sort === "subject_desc" || sort === "from_desc") {
+        const col = sort === "subject_desc" ? messages.subject : fromColumn
+        if (key !== undefined) {
+          conditions.push(
+            or(
+              lt(col, key),
+              and(eq(col, key), lt(messages.id, cursorId))
+            )
+          )
+        }
+      } else {
+        conditions.push(
+          or(
+            lt(orderByTime, ts),
+            and(
+              eq(orderByTime, ts),
+              lt(messages.id, cursorId)
+            )
+          )
+        )
+      }
     }
 
-    const orderByTime = messageType === 'sent' ? messages.sentAt : messages.receivedAt
-    
     const results = await db.query.messages.findMany({
       where: and(...conditions),
-      orderBy: (messages, { desc }) => [
-        desc(orderByTime),
-        desc(messages.id)
-      ],
+      orderBy: (t, { asc, desc }) => {
+        switch (sort) {
+          case "date_asc":
+            return [asc(orderByTime), asc(t.id)]
+          case "subject_asc":
+            return [asc(t.subject), asc(t.id)]
+          case "subject_desc":
+            return [desc(t.subject), desc(t.id)]
+          case "from_asc":
+            return [asc(fromColumn), asc(t.id)]
+          case "from_desc":
+            return [desc(fromColumn), desc(t.id)]
+          case "date_desc":
+          default:
+            return [desc(orderByTime), desc(t.id)]
+        }
+      },
       limit: PAGE_SIZE + 1
     })
-    
+
     const hasMore = results.length > PAGE_SIZE
-    const nextCursor = hasMore 
-      ? encodeCursor(
-          messageType === 'sent' 
-            ? results[PAGE_SIZE - 1].sentAt!.getTime()
-            : results[PAGE_SIZE - 1].receivedAt.getTime(),
-          results[PAGE_SIZE - 1].id
-        )
+    const lastRow = results[PAGE_SIZE - 1]
+    const nextCursor = hasMore
+      ? sort === "subject_asc" || sort === "subject_desc"
+        ? encodeCursor(0, lastRow.id, undefined, lastRow.subject)
+        : sort === "from_asc" || sort === "from_desc"
+          ? encodeCursor(0, lastRow.id, undefined, messageType === 'sent' ? (lastRow.toAddress ?? "") : (lastRow.fromAddress ?? ""))
+          : encodeCursor(
+              messageType === 'sent'
+                ? lastRow.sentAt!.getTime()
+                : lastRow.receivedAt.getTime(),
+              lastRow.id
+            )
       : null
     const messageList = hasMore ? results.slice(0, PAGE_SIZE) : results
 

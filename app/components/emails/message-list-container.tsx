@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Send, Inbox } from "lucide-react"
 import { Tabs, SlidingTabsList, SlidingTabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -14,13 +14,22 @@ interface MessageListContainerProps {
   }
   onMessageSelect: (messageId: string | null, messageType?: 'received' | 'sent') => void
   selectedMessageId?: string | null
+  /** 全局搜索命中已发送邮件时，外部把 Tab 切到 sent（否则中栏仍停留在收件箱） */
+  selectedMessageType?: 'received' | 'sent'
   refreshTrigger?: number
 }
 
-export function MessageListContainer({ email, onMessageSelect, selectedMessageId, refreshTrigger }: MessageListContainerProps) {
+export function MessageListContainer({ email, onMessageSelect, selectedMessageId, selectedMessageType, refreshTrigger }: MessageListContainerProps) {
   const t = useTranslations("emails.messages")
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received')
   const { canSend: canSendEmails } = useSendPermission()
+
+  useEffect(() => {
+    if (selectedMessageType && selectedMessageType !== activeTab) {
+      setActiveTab(selectedMessageType)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMessageType, selectedMessageId])
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId as 'received' | 'sent')

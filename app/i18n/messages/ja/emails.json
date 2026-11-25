@@ -36,7 +36,16 @@
     "deleteDescriptionTrash": "{email} can be moved to the trash: an admin can restore it within {days} days. Or delete it permanently, which removes the mailbox and all its messages immediately and cannot be undone.",
     "moveToTrash": "Move to Trash",
     "permanentDelete": "Delete Permanently",
-    "trashSuccess": "Mailbox moved to trash"
+    "trashSuccess": "Mailbox moved to trash",
+    "searchPlaceholder": "メールボックスのアドレスを検索…",
+    "searchNoResults": "一致するメールボックスがありません",
+    "sortCustom": "カスタム順",
+    "sortCreatedDesc": "作成日時：新しい順",
+    "sortCreatedAsc": "作成日時：古い順",
+    "sortExpiresAsc": "有効期限：近い順",
+    "sortExpiresDesc": "有効期限：遠い順",
+    "sortAddressAsc": "アドレス：A → Z",
+    "sortAddressDesc": "アドレス：Z → A"
   },
   "create": {
     "title": "メールボックスを作成",
@@ -64,7 +73,23 @@
     "subject": "件名",
     "date": "日付",
     "loading": "読み込み中...",
-    "loadingMore": "さらに読み込み中..."
+    "loadingMore": "さらに読み込み中...",
+    "searchPlaceholder": "件名・送信者・本文を検索…",
+    "searchNoResults": "一致するメールがありません",
+    "sortDateDesc": "日時：新しい順",
+    "sortDateAsc": "日時：古い順",
+    "sortSubjectAsc": "件名：A → Z",
+    "sortSubjectDesc": "件名：Z → A",
+    "sortFromAsc": "送信者：A → Z",
+    "sortFromDesc": "送信者：Z → A"
+  },
+  "search": {
+    "placeholder": "すべてのメールボックスとメールを検索…",
+    "loading": "検索中…",
+    "noResults": "一致する結果がありません",
+    "emails": "メールボックス",
+    "messages": "メール",
+    "clear": "検索をクリア"
   },
   "send": {
     "title": "メールを送信",

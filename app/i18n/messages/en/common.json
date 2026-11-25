@@ -6,7 +6,8 @@
     "ok": "OK",
     "cancel": "Cancel",
     "save": "Save",
-    "delete": "Delete"
+    "delete": "Delete",
+    "clear": "Clear"
   },
   "nav": {
     "home": "Home",

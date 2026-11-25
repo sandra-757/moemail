@@ -36,7 +36,16 @@
     "deleteDescriptionTrash": "{email} can be moved to the trash: an admin can restore it within {days} days. Or delete it permanently, which removes the mailbox and all its messages immediately and cannot be undone.",
     "moveToTrash": "Move to Trash",
     "permanentDelete": "Delete Permanently",
-    "trashSuccess": "Mailbox moved to trash"
+    "trashSuccess": "Mailbox moved to trash",
+    "searchPlaceholder": "메일박스 주소 검색…",
+    "searchNoResults": "일치하는 메일박스가 없습니다",
+    "sortCustom": "사용자 지정 순서",
+    "sortCreatedDesc": "생성일: 최신순",
+    "sortCreatedAsc": "생성일: 오래된순",
+    "sortExpiresAsc": "만료일: 임박순",
+    "sortExpiresDesc": "만료일: 여유순",
+    "sortAddressAsc": "주소: A → Z",
+    "sortAddressDesc": "주소: Z → A"
   },
   "create": {
     "title": "이메일 생성",
@@ -64,7 +73,23 @@
     "subject": "제목",
     "date": "날짜",
     "loading": "로딩 중...",
-    "loadingMore": "더 불러오는 중..."
+    "loadingMore": "더 불러오는 중...",
+    "searchPlaceholder": "제목, 발신자, 내용 검색…",
+    "searchNoResults": "일치하는 메일이 없습니다",
+    "sortDateDesc": "날짜: 최신순",
+    "sortDateAsc": "날짜: 오래된순",
+    "sortSubjectAsc": "제목: A → Z",
+    "sortSubjectDesc": "제목: Z → A",
+    "sortFromAsc": "발신자: A → Z",
+    "sortFromDesc": "발신자: Z → A"
+  },
+  "search": {
+    "placeholder": "모든 메일박스와 메일 검색…",
+    "loading": "검색 중…",
+    "noResults": "일치하는 결과가 없습니다",
+    "emails": "메일박스",
+    "messages": "메일",
+    "clear": "검색 지우기"
   },
   "send": {
     "title": "이메일 보내기",

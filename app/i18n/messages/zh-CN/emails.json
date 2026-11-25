@@ -36,7 +36,16 @@
     "deleteDescriptionTrash": "邮箱 {email} 可以移入回收站：移入后 {days} 天内可联系管理员恢复；也可以选择彻底删除，邮箱与其中所有邮件将立即删除且不可恢复。",
     "moveToTrash": "移入回收站",
     "permanentDelete": "彻底删除",
-    "trashSuccess": "邮箱已移入回收站"
+    "trashSuccess": "邮箱已移入回收站",
+    "searchPlaceholder": "搜索邮箱地址…",
+    "searchNoResults": "没有找到匹配的邮箱",
+    "sortCustom": "自定义排序",
+    "sortCreatedDesc": "创建时间：最新在前",
+    "sortCreatedAsc": "创建时间：最早在前",
+    "sortExpiresAsc": "过期时间：最近到期在前",
+    "sortExpiresDesc": "过期时间：最晚到期在前",
+    "sortAddressAsc": "地址：A → Z",
+    "sortAddressDesc": "地址：Z → A"
   },
   "create": {
     "title": "创建邮箱",
@@ -64,7 +73,23 @@
     "subject": "主题",
     "date": "日期",
     "loading": "加载中...",
-    "loadingMore": "加载更多..."
+    "loadingMore": "加载更多...",
+    "searchPlaceholder": "搜索主题、发件人、内容…",
+    "searchNoResults": "没有找到匹配的邮件",
+    "sortDateDesc": "时间：最新在前",
+    "sortDateAsc": "时间：最早在前",
+    "sortSubjectAsc": "主题：A → Z",
+    "sortSubjectDesc": "主题：Z → A",
+    "sortFromAsc": "发件人：A → Z",
+    "sortFromDesc": "发件人：Z → A"
+  },
+  "search": {
+    "placeholder": "全局搜索邮箱和邮件…",
+    "loading": "搜索中…",
+    "noResults": "没有找到匹配的结果",
+    "emails": "邮箱",
+    "messages": "邮件",
+    "clear": "清除搜索"
   },
   "send": {
     "title": "发送邮件",

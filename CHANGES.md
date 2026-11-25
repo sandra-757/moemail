@@ -229,3 +229,22 @@ ALTER TABLE `user` ADD `expired_to_trash` integer;
 > 六期线上实测（2026-11-20，浏览器真机 + D1 核对，全过）：建箱 trash-test-1120 → Amelu 真信到达 → 删除弹三按钮（取消/彻底删除/移入回收站）→ 移入回收站后列表消失、管理台回收站可见（属主/删除时间/邮件数 1/恢复+删除按钮）、D1 中 deleted_at 已标记且邮件仍挂载 → 恢复后箱与信完好 → 再移入回收站 → 回收站内彻底删除（二次确认）后 D1 邮箱行与邮件行均真删。认领解耦：SAVE_ORPHAN_MAILS 临时开 → 向不存在地址 claim-probe-1120 发信落孤儿（emailId NULL）→ 关开关 → 建同名箱，孤儿信在开关全关时照样被认领进箱；测毕以「彻底删除」清箱。另确认：顶栏「返回邮箱」按钮在非邮箱首页时位于登出左侧；个人中心「我的邮箱到期后自动进入回收站」可见且跟随站点默认（开启），回收站保留期 30 天。诊断用的一次性 Pages 项目 moemail-test 已删除。
 > 修复（2026-11-20，用户实测反馈）：创建邮箱对话框把「名称留空」误判为错误并拦截，还拿占位文案 namePlaceholder 当报错描述弹出（红框显示「留空则随机生成」）；实际上后端 /api/emails/generate 与 /api/admin/space 均以 name || nanoid(8) 支持留空随机生成，管理台空间页也无此拦截，仅用户侧对话框有此上游遗留 bug。已删除该拦截、提交时传 trim 后的名称（空串即随机），并在域名配置未加载完（currentDomain 为空）时禁用创建按钮，避免误报「无效的域名」。commit d1fd3ad，已部署生产（部署 f94cd0af）；全新浏览器环境实测通过：留空创建出随机箱 5Lvc-A_K@mrin.de5.net（测后已删）。注意：早上沿用的长命浏览器窗口缓存顽固，Ctrl+Shift+R 未能刷掉旧脚本，前两轮实测误报未生效——部署后验收宜用全新 profile。
 > 七期（2026-11-20）：旧实例（moemail.weiuqi.xx.kg，另一 Cloudflare 账号）原地升级到本 fork：CI（GitHub Actions「Deploy」工作流）以旧账号凭据按名复用现有 moemail / moemail-db / moemail-kv，补跑迁移 0019–0022 后部署 Pages 与 email-receiver/cleanup 两 Worker；工作流不传任何 AUTH_*，部署脚本无密钥可推时自动跳过，旧实例原有 AUTH_SECRET 与 GitHub OAuth 配置未被覆盖。升级后对账：用户 4 / 邮箱 31 / 邮件 74 / API Key 2 与升级前一致，GitHub 登录仍在 providers 列表，custom.moemail 的 API Key 照常可用，serv00 实测来信落库（测试信已删）。旧实例 KV 已按新实例口径开启 MAILBOX_TRASH_ENABLED 与 EXPIRED_TRASH_DEFAULT（均为 true）。同日打通双实例同步：工作流含 legacy/new 两 job，手动触发可选目标，feat/admin-config-v1 分支 push 自动两边同跑；仓库密钥为每账号一对（LEGACY_/NEW_ + CLOUDFLARE_API_TOKEN/ACCOUNT_ID）。注意：fork 仓库的工作流文件需同步一份到默认分支 master 才会被 GitHub 注册（仅在功能分支时 workflow_dispatch 返回 404）。
+
+## 八期（2026-11-25）：搜索 + 排序
+
+- **邮箱搜索**：`GET /api/emails?q=` 按地址子串搜（大小写不敏感；`%`/`_`/`\` 已转义，不会变成通配符）。邮箱列表顶部新增搜索框（防抖 300ms，清空按钮），计数显示过滤后的总数，无结果时显示「没有找到匹配的邮箱」。
+- **邮件搜索**：`GET /api/emails/[id]?q=` 在本邮箱内按主题 / 发件人 / 收件人 / 正文子串搜。邮件列表顶部新增搜索框（同款防抖 + 清空）；搜索期间暂停轮询，避免新邮件合并冲掉搜索视图；清空后自动恢复轮询。
+- **全局搜索**：新增 `GET /api/search?q=`（q 至少 2 字符，否则 400，避免单字符 LIKE 全表扫），跨当前用户全部未过期、未软删邮箱同时返回匹配邮箱（最多 10，按地址排）与匹配邮件（最多 20，最新在前，附正文摘要：命中词前后各 40 字符、去 HTML 标签）。三栏页顶部新增全局搜索框（桌面/移动共用），点邮箱结果切到该邮箱，点邮件结果切到其邮箱并打开该邮件；已发送邮件命中时中栏 Tab 自动切到「已发送」（`MessageListContainer` 新增 `selectedMessageType` 透传）。
+- **邮箱排序**：`GET /api/emails?sort=`，`custom`（默认，现有手动拖拽顺序）| `created_desc` | `created_asc` | `expires_asc` | `expires_desc` | `address_asc` | `address_desc`。游标与排序模式绑定（时间排序用字段值、地址排序用地址作游标键，`app/lib/cursor.ts` 新增可选 `key` 字段），换 q/sort 后前端从头拉取。
+- **邮件排序**：`GET /api/emails/[id]?sort=`，`date_desc`（默认）| `date_asc` | `subject_asc` | `subject_desc` | `from_asc` | `from_desc`（已发送按收件人排、收件按发件人排，与列表展示地址一致）。游标口径同上。
+- **拖拽与排序的互斥**：搜索中或排序非 custom 时禁用拖拽重排（手柄隐藏），只对 custom 全量列表开放；未加载全量时点手柄仍可先加载全部（原行为保留）。
+- **共用代码**：新增 `app/lib/search.ts`（`parseSearchQuery` 截断 100 字符、`escapeLikeValue`/`likeColumn` 带 `ESCAPE '\'` 的 LIKE、`parseMailboxSort`/`parseMessageSort` 非法值回退默认、`makeSnippet`）、`app/hooks/use-debounce.ts`（300ms）。
+- **i18n**：`emails.json` 五语种新增 `list.searchPlaceholder/searchNoResults/sort*`（7 个）、`messages.searchPlaceholder/searchNoResults/sort*`（8 个）、整段 `search.*`（全局搜索，6 个）；`common.json` 五语种 `actions` 新增 `clear`（清除按钮 aria-label）。五语种均为正式译文。
+- **范围外（有意未做）**：管理员空间页（`/admin/space/[userId]`）的邮箱/邮件列表未加搜索排序，仍走原有分页；如需可后续按同一套 `q`/`sort` 口径接。无 D1 schema 变更、无新 KV、无新环境变量。
+
+## 验证结果（2026-11-25 实测）
+
+- `npx tsc --noEmit` **exit=0，零错误**。
+- `npm run build`（家目录下的构建副本，避免 /tmp 512MB tmpfs 爆满与工作区留 `.next` 产物；构建前清过一次误拷的顶层 `components/` 副本，已删净）**exit=0，构建成功**；路由表含新增 `ƒ /api/search`；无新增 ESLint 报错、无 i18n 缺键报错。
+- 真实 lib 函数经 `tsx` 实测：`likePattern("a%b_c\\d")` 转义正确、`makeSnippet` 在 HTML 正文里命中 "123456" 前后取段且去标签、超长 q 截断 100 字符、非法 sort 回退默认、地址游标 `encode/decode` 往返一致。
+- 未做线上实测（无可用发信通道做端到端搜索验收，D1 LIKE 语义与现有 `roles/users` 的 `like()` 用法一致）；未 push，未部署——**注意：`feat/admin-config-v1` 分支 push 会触发 CI 自动双实例部署**，部署需用户确认后执行。

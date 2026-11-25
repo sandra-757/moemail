@@ -1,14 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CreateDialog } from "./create-dialog"
 import { ShareDialog } from "./share-dialog"
-import { Clock, GripVertical, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react"
+import { Clock, GripVertical, Loader2, Mail, RefreshCw, Search, Trash2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useThrottle } from "@/hooks/use-throttle"
+import { useDebounce } from "@/hooks/use-debounce"
+import { MAILBOX_SORTS, type MailboxSort } from "@/lib/search"
 import { EMAIL_CONFIG } from "@/config"
 import { useToast } from "@/components/ui/use-toast"
 import {
@@ -82,6 +85,15 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [dragId, setDragId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
   const [loadingAll, setLoadingAll] = useState(false)
+  // 搜索 + 排序：输入防抖 300ms 后才请求；换关键词/排序即从头拉取（旧游标失效）
+  const [searchInput, setSearchInput] = useState("")
+  const [sort, setSort] = useState<MailboxSort>("custom")
+  const debouncedSearch = useDebounce(searchInput.trim(), 300)
+  const searchRef = useRef(debouncedSearch)
+  searchRef.current = debouncedSearch
+  const sortRef = useRef(sort)
+  sortRef.current = sort
+  const isSearching = debouncedSearch.length > 0
 
   const allowPermanentEmail = config?.allowPermanentEmail ?? true
   const trashEnabled = config?.mailboxTrashEnabled ?? false
@@ -91,6 +103,17 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
     .filter(({ option }) => allowPermanentEmail || option.value !== 0)
 
   const allLoaded = !nextCursor
+  // 拖拽重排只对 custom 全量列表有意义：搜索中或换了排序时禁用
+  const canReorder = allLoaded && sort === "custom" && !isSearching
+  const sortLabels: Record<MailboxSort, string> = {
+    custom: t("sortCustom"),
+    created_desc: t("sortCreatedDesc"),
+    created_asc: t("sortCreatedAsc"),
+    expires_asc: t("sortExpiresAsc"),
+    expires_desc: t("sortExpiresDesc"),
+    address_asc: t("sortAddressAsc"),
+    address_desc: t("sortAddressDesc"),
+  }
 
   const ensureAllLoaded = async () => {
     if (!nextCursor || loadingAll) return
@@ -101,6 +124,8 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
       while (cursor) {
         const url = new URL("/api/emails", window.location.origin)
         url.searchParams.set("cursor", cursor)
+        if (searchRef.current) url.searchParams.set("q", searchRef.current)
+        url.searchParams.set("sort", sortRef.current)
         const response = await fetch(url)
         const data = (await response.json()) as EmailResponse
         collected.push(...data.emails)
@@ -167,19 +192,27 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
     }
   }
 
-  const fetchEmails = async (cursor?: string) => {
+  const fetchEmails = async (cursor?: string, reset = false) => {
     try {
       const url = new URL("/api/emails", window.location.origin)
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }
+      if (searchRef.current) url.searchParams.set("q", searchRef.current)
+      url.searchParams.set("sort", sortRef.current)
       const response = await fetch(url)
       const data = await response.json() as EmailResponse
       if (data.effectiveLimit !== undefined) {
         setEffectiveLimit(data.effectiveLimit)
       }
-      
+
       if (!cursor) {
+        if (reset) {
+          setEmails(data.emails)
+          setNextCursor(data.nextCursor)
+          setTotal(data.total)
+          return
+        }
         const newEmails = data.emails
         const oldEmails = emails
 
@@ -212,7 +245,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchEmails()
+    await fetchEmails(undefined, true)
   }
 
   const handleScroll = useThrottle((e: React.UIEvent<HTMLDivElement>) => {
@@ -228,9 +261,14 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
     }
   }, 200)
 
+  // 初次加载与搜索词 / 排序变化时从头拉取（旧游标与当前 q/sort 不匹配）
   useEffect(() => {
-    if (session) fetchEmails()
-  }, [session])
+    if (!session) return
+    setLoading(true)
+    setNextCursor(null)
+    fetchEmails(undefined, true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, debouncedSearch, sort])
 
   const handleDelete = async (email: Email, toTrash = true) => {
     try {
@@ -296,6 +334,39 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
           </div>
           <CreateDialog onEmailCreated={handleRefresh} />
         </div>
+        <div className="p-2 flex gap-2 border-b border-primary/20">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="pl-8 pr-8 h-8"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                aria-label={tCommon("clear") ?? "Clear"}
+                onClick={() => setSearchInput("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <Select value={sort} onValueChange={(value) => setSort(value as MailboxSort)}>
+            <SelectTrigger className="h-8 w-[132px] shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MAILBOX_SORTS.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {sortLabels[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         
         <div className="flex-1 overflow-auto p-2" onScroll={handleScroll}>
           {loading ? (
@@ -305,7 +376,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
               {emails.map(email => (
                 <div
                   key={email.id}
-                  draggable={allLoaded}
+                  draggable={canReorder}
                   onDragStart={(e) => {
                     setDragId(email.id)
                     e.dataTransfer.effectAllowed = "move"
@@ -330,15 +401,17 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                   )}
                   onClick={() => onEmailSelect(email)}
                 >
-                  <span
-                    className={cn("shrink-0 text-gray-300 group-hover:text-gray-400", allLoaded ? "cursor-grab" : "cursor-pointer")}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (!allLoaded) ensureAllLoaded()
-                    }}
-                  >
-                    {loadingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <GripVertical className="h-4 w-4" />}
-                  </span>
+                  {canReorder || !allLoaded ? (
+                    <span
+                      className={cn("shrink-0 text-gray-300 group-hover:text-gray-400", canReorder ? "cursor-grab" : "cursor-pointer")}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (!allLoaded) ensureAllLoaded()
+                      }}
+                    >
+                      {loadingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <GripVertical className="h-4 w-4" />}
+                    </span>
+                  ) : null}
                   <Mail className="h-4 w-4 text-primary/60" />
                   <div className="truncate flex-1">
                     <div className="font-medium truncate">{email.address}</div>
@@ -387,7 +460,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
             </div>
           ) : (
             <div className="text-center text-sm text-gray-500">
-              {t("noEmails")}
+              {isSearching ? t("searchNoResults") : t("noEmails")}
             </div>
           )}
         </div>

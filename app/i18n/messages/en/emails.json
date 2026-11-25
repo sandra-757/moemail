@@ -36,7 +36,16 @@
     "deleteDescriptionTrash": "{email} can be moved to the trash: an admin can restore it within {days} days. Or delete it permanently, which removes the mailbox and all its messages immediately and cannot be undone.",
     "moveToTrash": "Move to Trash",
     "permanentDelete": "Delete Permanently",
-    "trashSuccess": "Mailbox moved to trash"
+    "trashSuccess": "Mailbox moved to trash",
+    "searchPlaceholder": "Search mailbox address…",
+    "searchNoResults": "No matching mailboxes",
+    "sortCustom": "Custom order",
+    "sortCreatedDesc": "Created: newest first",
+    "sortCreatedAsc": "Created: oldest first",
+    "sortExpiresAsc": "Expires: soonest first",
+    "sortExpiresDesc": "Expires: latest first",
+    "sortAddressAsc": "Address: A → Z",
+    "sortAddressDesc": "Address: Z → A"
   },
   "create": {
     "title": "Create Email",
@@ -64,7 +73,23 @@
     "subject": "Subject",
     "date": "Date",
     "loading": "Loading...",
-    "loadingMore": "Loading more..."
+    "loadingMore": "Loading more...",
+    "searchPlaceholder": "Search subject, sender, content…",
+    "searchNoResults": "No matching messages",
+    "sortDateDesc": "Date: newest first",
+    "sortDateAsc": "Date: oldest first",
+    "sortSubjectAsc": "Subject: A → Z",
+    "sortSubjectDesc": "Subject: Z → A",
+    "sortFromAsc": "From: A → Z",
+    "sortFromDesc": "From: Z → A"
+  },
+  "search": {
+    "placeholder": "Search all mailboxes and messages…",
+    "loading": "Searching…",
+    "noResults": "No matching results",
+    "emails": "Mailboxes",
+    "messages": "Messages",
+    "clear": "Clear search"
   },
   "send": {
     "title": "Send Email",

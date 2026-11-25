@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { EmailList } from "./email-list"
+import { GlobalSearch } from "./global-search"
 import { MessageListContainer } from "./message-list-container"
 import { MessageView } from "./message-view"
 import { SendDialog } from "./send-dialog"
@@ -51,8 +52,22 @@ export function ThreeColumnLayout() {
     setRefreshTrigger(prev => prev + 1)
   }
 
+  // 全局搜索命中：先切到对应邮箱，再打开命中的邮件（仅邮箱命中时只切邮箱）
+  const handleGlobalSelect = (
+    email: Email,
+    messageId?: string | null,
+    messageType?: "received" | "sent"
+  ) => {
+    setSelectedEmail(email)
+    setSelectedMessageId(messageId ?? null)
+    if (messageType) setSelectedMessageType(messageType)
+  }
+
   return (
     <div className="pb-5 pt-20 h-full flex flex-col">
+      <div className="mb-3 flex shrink-0 justify-end">
+        <GlobalSearch onSelect={handleGlobalSelect} />
+      </div>
       {/* 桌面端三栏布局 */}
       <div className="hidden lg:grid grid-cols-12 gap-4 h-full min-h-0">
         <div className={cn("col-span-3", columnClass)}>
@@ -100,6 +115,7 @@ export function ThreeColumnLayout() {
                 email={selectedEmail}
                 onMessageSelect={handleMessageSelect}
                 selectedMessageId={selectedMessageId}
+                selectedMessageType={selectedMessageType}
                 refreshTrigger={refreshTrigger}
               />
             </div>
@@ -176,6 +192,7 @@ export function ThreeColumnLayout() {
                   email={selectedEmail}
                   onMessageSelect={handleMessageSelect}
                   selectedMessageId={selectedMessageId}
+                  selectedMessageType={selectedMessageType}
                   refreshTrigger={refreshTrigger}
                 />
               </div>
