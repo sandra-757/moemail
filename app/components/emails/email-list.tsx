@@ -428,7 +428,19 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
                       )}
                     </div>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  {/* 操作按钮：桌面端 hover 才显示、移动端（lg 以下单栏）常显。
+                      之前是 opacity-0 + group-hover:opacity-100：触屏没有 hover，
+                      按钮看不见却仍占位可点，点中行后触屏才触发 :hover 显示出来
+                      （2026-11-25 用户手机实测）。选中行任何尺寸下都常显。 */}
+                  <div
+                    className={cn(
+                      "flex gap-1",
+                      selectedEmailId === email.id
+                        ? "opacity-100"
+                        : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                    )}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button
                       variant="ghost"
                       size="icon"

@@ -342,7 +342,16 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
                       </span>
                     </div>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  {/* 同 email-list：触屏无 hover，lg 以下单栏常显操作按钮，选中行常显 */}
+                  <div
+                    className={cn(
+                      "flex gap-1",
+                      selectedMessageId === message.id
+                        ? "opacity-100"
+                        : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                    )}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <ShareMessageDialog
                       emailId={email.id}
                       messageId={message.id}
