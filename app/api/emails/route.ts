@@ -4,6 +4,8 @@ import { NextResponse } from "next/server"
 import { emails } from "@/lib/schema"
 import { encodeCursor, decodeCursor } from "@/lib/cursor"
 import { getUserId } from "@/lib/apiKey"
+import { getRequestContext } from "@cloudflare/next-on-pages"
+import { resolveEmailLimit } from "@/lib/email-limit"
 
 export const runtime = "edge"
 
@@ -16,6 +18,7 @@ export async function GET(request: Request) {
   const cursor = searchParams.get('cursor')
   
   const db = createDb()
+  const env = getRequestContext().env
 
   try {
     const baseConditions = and(
@@ -70,10 +73,15 @@ export async function GET(request: Request) {
       : null
     const emailList = hasMore ? results.slice(0, PAGE_SIZE) : results
 
+    // 与建邮箱同一口径的生效上限：个人上限 → 分组上限 → 皇帝不限 → 全局上限。
+    // Infinity（不限）序列化为 null，前端据此显示“不限量”。
+    const emailLimit = await resolveEmailLimit(db, env.SITE_CONFIG, userId!)
+
     return NextResponse.json({ 
       emails: emailList,
       nextCursor,
-      total: totalCount
+      total: totalCount,
+      effectiveLimit: Number.isFinite(emailLimit) ? emailLimit : null
     })
   } catch (error) {
     console.error('Failed to fetch user emails:', error)

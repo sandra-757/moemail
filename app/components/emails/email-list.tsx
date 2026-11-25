@@ -21,8 +21,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ROLES } from "@/lib/permissions"
-import { useUserRole } from "@/hooks/use-user-role"
 import { useConfig } from "@/hooks/use-config"
 import { EXPIRY_OPTIONS } from "@/types/email"
 import { Label } from "@/components/ui/label"
@@ -57,12 +55,14 @@ interface EmailResponse {
   emails: Email[]
   nextCursor: string | null
   total: number
+  // 与建邮箱同一口径的生效上限（个人上限 → 分组上限 → 皇帝不限 → 全局上限），
+  // null 表示不限量；字段缺失时（旧部署）前端回退到全站 maxEmails。
+  effectiveLimit?: number | null
 }
 
 export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const { data: session } = useSession()
   const { config } = useConfig()
-  const { role } = useUserRole()
   const t = useTranslations("emails.list")
   const tCommon = useTranslations("common.actions")
   const [emails, setEmails] = useState<Email[]>([])
@@ -71,6 +71,8 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)
+  // undefined = 尚未拿到接口返回值，null = 不限量，数字 = 生效上限
+  const [effectiveLimit, setEffectiveLimit] = useState<number | null | undefined>(undefined)
   const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
   const { toast } = useToast()
   const tCreate = useTranslations("emails.create")
@@ -173,6 +175,9 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
       }
       const response = await fetch(url)
       const data = await response.json() as EmailResponse
+      if (data.effectiveLimit !== undefined) {
+        setEffectiveLimit(data.effectiveLimit)
+      }
       
       if (!cursor) {
         const newEmails = data.emails
@@ -282,10 +287,10 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
               <RefreshCw className="h-4 w-4" />
             </Button>
             <span className="text-xs text-gray-500">
-              {role === ROLES.EMPEROR ? (
+              {effectiveLimit === null ? (
                 t("emailCountUnlimited", { count: total })
               ) : (
-                t("emailCount", { count: total, max: config?.maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS })
+                t("emailCount", { count: total, max: effectiveLimit ?? (config?.maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS) })
               )}
             </span>
           </div>
