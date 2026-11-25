@@ -113,16 +113,19 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
       if (searchRef.current) url.searchParams.set('q', searchRef.current)
       url.searchParams.set('sort', sortRef.current)
       const response = await fetch(url)
+      // 同 email-list：接口报错时不碰 data.messages，避免整页白屏崩溃。
+      if (!response.ok) throw new Error(`messages request failed: ${response.status}`)
       const data = await response.json() as MessageResponse
+      const list = Array.isArray(data.messages) ? data.messages : []
 
       if (!cursor) {
         if (reset) {
-          setMessages(data.messages)
+          setMessages(list)
           setNextCursor(data.nextCursor)
           setTotal(data.total)
           return
         }
-        const newMessages = data.messages
+        const newMessages = list
         const oldMessages = messagesRef.current
 
         const lastDuplicateIndex = newMessages.findIndex(
@@ -140,7 +143,7 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
         setTotal(data.total)
         return
       }
-      setMessages(prev => [...prev, ...data.messages])
+      setMessages(prev => [...prev, ...list])
       setNextCursor(data.nextCursor)
       setTotal(data.total)
     } catch (error) {
@@ -298,8 +301,8 @@ export function MessageList({ email, messageType, onMessageSelect, selectedMessa
           )}
         </div>
         <Select value={sort} onValueChange={(value) => setSort(value as MessageSort)}>
-          <SelectTrigger className="h-8 w-[132px] shrink-0">
-            <SelectValue />
+          <SelectTrigger className="h-8 w-[152px] shrink-0 text-xs">
+            <SelectValue className="truncate" />
           </SelectTrigger>
           <SelectContent>
             {MESSAGE_SORTS.map((value) => (

@@ -127,8 +127,9 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
         if (searchRef.current) url.searchParams.set("q", searchRef.current)
         url.searchParams.set("sort", sortRef.current)
         const response = await fetch(url)
+        if (!response.ok) throw new Error(`emails request failed: ${response.status}`)
         const data = (await response.json()) as EmailResponse
-        collected.push(...data.emails)
+        collected.push(...(Array.isArray(data.emails) ? data.emails : []))
         cursor = data.nextCursor
       }
       setEmails((prev) => [...prev, ...collected])
@@ -201,19 +202,23 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
       if (searchRef.current) url.searchParams.set("q", searchRef.current)
       url.searchParams.set("sort", sortRef.current)
       const response = await fetch(url)
+      // 接口报错时绝不能把错误体当列表用：500 的 data.emails 是 undefined，
+      // setEmails(undefined) 会让渲染读 emails.length 时整页白屏崩溃（2026-11-25 实测）。
+      if (!response.ok) throw new Error(`emails request failed: ${response.status}`)
       const data = await response.json() as EmailResponse
+      const list = Array.isArray(data.emails) ? data.emails : []
       if (data.effectiveLimit !== undefined) {
         setEffectiveLimit(data.effectiveLimit)
       }
 
       if (!cursor) {
         if (reset) {
-          setEmails(data.emails)
+          setEmails(list)
           setNextCursor(data.nextCursor)
           setTotal(data.total)
           return
         }
-        const newEmails = data.emails
+        const newEmails = list
         const oldEmails = emails
 
         const lastDuplicateIndex = newEmails.findIndex(
@@ -231,7 +236,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
         setTotal(data.total)
         return
       }
-      setEmails(prev => [...prev, ...data.emails])
+      setEmails(prev => [...prev, ...list])
       setNextCursor(data.nextCursor)
       setTotal(data.total)
     } catch (error) {
@@ -355,8 +360,8 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
             )}
           </div>
           <Select value={sort} onValueChange={(value) => setSort(value as MailboxSort)}>
-            <SelectTrigger className="h-8 w-[132px] shrink-0">
-              <SelectValue />
+            <SelectTrigger className="h-8 w-[152px] shrink-0 text-xs">
+              <SelectValue className="truncate" />
             </SelectTrigger>
             <SelectContent>
               {MAILBOX_SORTS.map((value) => (

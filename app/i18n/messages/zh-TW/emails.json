@@ -40,10 +40,10 @@
     "searchPlaceholder": "搜尋信箱地址…",
     "searchNoResults": "沒有找到相符的信箱",
     "sortCustom": "自訂排序",
-    "sortCreatedDesc": "建立時間：最新在前",
-    "sortCreatedAsc": "建立時間：最早在前",
-    "sortExpiresAsc": "過期時間：最近到期在前",
-    "sortExpiresDesc": "過期時間：最晚到期在前",
+    "sortCreatedDesc": "建立：最新在前",
+    "sortCreatedAsc": "建立：最早在前",
+    "sortExpiresAsc": "過期：最早在前",
+    "sortExpiresDesc": "過期：最晚在前",
     "sortAddressAsc": "地址：A → Z",
     "sortAddressDesc": "地址：Z → A"
   },
@@ -89,7 +89,8 @@
     "noResults": "沒有找到相符的結果",
     "emails": "信箱",
     "messages": "郵件",
-    "clear": "清除搜尋"
+    "clear": "清除搜尋",
+    "searchFailed": "搜尋失敗，請稍後重試"
   },
   "send": {
     "title": "發送郵件",

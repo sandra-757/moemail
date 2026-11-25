@@ -40,10 +40,10 @@
     "searchPlaceholder": "Search mailbox address…",
     "searchNoResults": "No matching mailboxes",
     "sortCustom": "Custom order",
-    "sortCreatedDesc": "Created: newest first",
-    "sortCreatedAsc": "Created: oldest first",
-    "sortExpiresAsc": "Expires: soonest first",
-    "sortExpiresDesc": "Expires: latest first",
+    "sortCreatedDesc": "Created: newest",
+    "sortCreatedAsc": "Created: oldest",
+    "sortExpiresAsc": "Expires: soonest",
+    "sortExpiresDesc": "Expires: latest",
     "sortAddressAsc": "Address: A → Z",
     "sortAddressDesc": "Address: Z → A"
   },
@@ -76,8 +76,8 @@
     "loadingMore": "Loading more...",
     "searchPlaceholder": "Search subject, sender, content…",
     "searchNoResults": "No matching messages",
-    "sortDateDesc": "Date: newest first",
-    "sortDateAsc": "Date: oldest first",
+    "sortDateDesc": "Date: newest",
+    "sortDateAsc": "Date: oldest",
     "sortSubjectAsc": "Subject: A → Z",
     "sortSubjectDesc": "Subject: Z → A",
     "sortFromAsc": "From: A → Z",
@@ -89,7 +89,8 @@
     "noResults": "No matching results",
     "emails": "Mailboxes",
     "messages": "Messages",
-    "clear": "Clear search"
+    "clear": "Clear search",
+    "searchFailed": "Search failed, please try again later"
   },
   "send": {
     "title": "Send Email",

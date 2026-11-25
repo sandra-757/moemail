@@ -40,10 +40,10 @@
     "searchPlaceholder": "メールボックスのアドレスを検索…",
     "searchNoResults": "一致するメールボックスがありません",
     "sortCustom": "カスタム順",
-    "sortCreatedDesc": "作成日時：新しい順",
-    "sortCreatedAsc": "作成日時：古い順",
-    "sortExpiresAsc": "有効期限：近い順",
-    "sortExpiresDesc": "有効期限：遠い順",
+    "sortCreatedDesc": "作成：新しい順",
+    "sortCreatedAsc": "作成：古い順",
+    "sortExpiresAsc": "期限：近い順",
+    "sortExpiresDesc": "期限：遠い順",
     "sortAddressAsc": "アドレス：A → Z",
     "sortAddressDesc": "アドレス：Z → A"
   },
@@ -89,7 +89,8 @@
     "noResults": "一致する結果がありません",
     "emails": "メールボックス",
     "messages": "メール",
-    "clear": "検索をクリア"
+    "clear": "検索をクリア",
+    "searchFailed": "検索に失敗しました。しばらくしてからもう一度お試しください"
   },
   "send": {
     "title": "メールを送信",

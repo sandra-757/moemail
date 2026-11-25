@@ -250,3 +250,8 @@ ALTER TABLE `user` ADD `expired_to_trash` integer;
 - 未做线上实测（无可用发信通道做端到端搜索验收，D1 LIKE 语义与现有 `roles/users` 的 `like()` 用法一致）；未 push，未部署——**注意：`feat/admin-config-v1` 分支 push 会触发 CI 自动双实例部署**，部署需用户确认后执行。
 
 > 修复（2026-11-25，八期部署后线上实测发现）：上线后 `GET /api/emails?q=…` 与带 q 的邮件搜索全部 500。根因在 `app/lib/search.ts` 的 `likeColumn`：模板字面量里写的 `ESCAPE '\'`，JS 把 `\'` 当成转义单引号、反斜杠被吃掉，实际发到 D1 的 SQL 是 `ESCAPE ''`（空串），SQLite 报错 "ESCAPE expression must be a single character"。此前 tsx 只测了 `likePattern` 的返回值、没跑真查询，所以没抓到。修复：转义符改用 `!`（`escapeLikeValue` 改为 `!`→`!!`、`%`→`!%`、`_`→`!_`，SQL 用 `ESCAPE '!'`，模板里再无反斜杠）；根因与教训已写进 `search.ts` 顶部注释。复核用临时脚本（drizzle sqlite-proxy + node:sqlite 内存库，已删）跑真查询：`q=mrin` 命中 2 条、地址排序/时间排序均正常、`a%b` 按字面命中含 `%` 的地址、`zzz` 无结果 0 条；`tsc` 与 `npm run build` 均通过。修复提交后重新部署双实例并线上复验。
+
+> 修复二（2026-11-25，用户实测反馈三点）：
+> 1. **邮箱搜索崩溃**：`GET /api/emails?q=131` 在修复一部署前是 500，前端 `fetchEmails` 未判 `response.ok` 就把错误体当列表 `setEmails(data.emails)`（undefined），渲染读 `emails.length` 抛 TypeError、整页白屏 "Application error"。已在 `email-list`（含 `ensureAllLoaded`）、`message-list` 的取数处加 `!response.ok` 即抛错 + `Array.isArray` 兜底，接口再报错也只保留旧列表、不崩页。另注：用户截图里的 500 发生在修复一部署完成前，修复后线上复验 `q=131` 已回 200（total 0，无此地址属正常）。
+> 2. **右上角全局搜索搜 oscar 显示无结果**：同一故障的另一面——修复前 `/api/search` 也 500，而全局搜索组件把任何失败都按“无结果”显示。已加 `failed` 状态，失败时显示新增的 `search.searchFailed`（“搜索失败，请稍后重试”，五语种），不再误报无结果。全局搜索的邮件 JOIN 查询另用内存库真查询复核：`oscar` 命中邮箱 1 个 + 邮件 2 条（收件人/正文各一）、`123456` 命中验证码邮件且摘要含码、`zzz` 为空。
+> 3. **排序下拉框挤成两行**：触发器 132px 塞不下“过期时间：最晚到期在前”这类长文案。已把两处触发器加宽到 152px + `text-xs` + `SelectValue truncate`，并把五语种排序文案缩短（中文如“创建：最新在前 / 过期：最晚在前 / 地址：A → Z”，其余语种同理）。

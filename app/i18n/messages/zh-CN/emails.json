@@ -40,10 +40,10 @@
     "searchPlaceholder": "搜索邮箱地址…",
     "searchNoResults": "没有找到匹配的邮箱",
     "sortCustom": "自定义排序",
-    "sortCreatedDesc": "创建时间：最新在前",
-    "sortCreatedAsc": "创建时间：最早在前",
-    "sortExpiresAsc": "过期时间：最近到期在前",
-    "sortExpiresDesc": "过期时间：最晚到期在前",
+    "sortCreatedDesc": "创建：最新在前",
+    "sortCreatedAsc": "创建：最早在前",
+    "sortExpiresAsc": "过期：最早在前",
+    "sortExpiresDesc": "过期：最晚在前",
     "sortAddressAsc": "地址：A → Z",
     "sortAddressDesc": "地址：Z → A"
   },
@@ -89,7 +89,8 @@
     "noResults": "没有找到匹配的结果",
     "emails": "邮箱",
     "messages": "邮件",
-    "clear": "清除搜索"
+    "clear": "清除搜索",
+    "searchFailed": "搜索失败，请稍后重试"
   },
   "send": {
     "title": "发送邮件",

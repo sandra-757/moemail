@@ -48,6 +48,7 @@ export function GlobalSearch({ onSelect }: GlobalSearchProps) {
   const [input, setInput] = useState("")
   const [results, setResults] = useState<SearchResponse | null>(null)
   const [loading, setLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState(false)
   const debounced = useDebounce(input.trim(), 300)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -62,15 +63,25 @@ export function GlobalSearch({ onSelect }: GlobalSearchProps) {
     }
     let cancelled = false
     setLoading(true)
+    setFailed(false)
     fetch(`/api/search?q=${encodeURIComponent(debounced)}`)
-      .then((res) => (res.ok ? (res.json() as Promise<SearchResponse>) : null))
+      .then((res) => {
+        // 接口失败（500 等）不能按“无结果”显示，否则用户以为真的搜不到
+        // （2026-11-25：服务端 ESCAPE 故障期间全局搜 oscar 就这样误报了无结果）。
+        if (!res.ok) throw new Error(`search failed: ${res.status}`)
+        return res.json() as Promise<SearchResponse>
+      })
       .then((data) => {
         if (cancelled || !data) return
         setResults(data)
         setOpen(true)
       })
       .catch(() => {
-        if (!cancelled) setResults(null)
+        if (!cancelled) {
+          setResults(null)
+          setFailed(true)
+          setOpen(true)
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -94,6 +105,7 @@ export function GlobalSearch({ onSelect }: GlobalSearchProps) {
   const clear = () => {
     setInput("")
     setResults(null)
+    setFailed(false)
     setOpen(false)
   }
 
@@ -143,6 +155,8 @@ export function GlobalSearch({ onSelect }: GlobalSearchProps) {
         <div className="absolute z-50 mt-1 w-full rounded-md border border-primary/20 bg-background shadow-lg max-h-[60vh] overflow-auto">
           {loading && !hasResults ? (
             <div className="p-3 text-center text-sm text-gray-500">{t("loading")}</div>
+          ) : failed ? (
+            <div className="p-3 text-center text-sm text-red-500">{t("searchFailed")}</div>
           ) : !hasResults ? (
             <div className="p-3 text-center text-sm text-gray-500">{t("noResults")}</div>
           ) : (
